@@ -1,0 +1,5 @@
+using Jive
+
+@onlyonce begin
+    println(42)
+end
