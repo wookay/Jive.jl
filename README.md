@@ -48,3 +48,17 @@ using Jive # @onlyonce
     println(42)
 end
 ```
+
+
+* `@skip` ([test/jive/skip](https://github.com/wookay/Jive.jl/blob/master/test/jive/skip/skip.jl))
+```julia
+using Jive # @skip
+
+ENV["JIVE_SKIP"] = "1"   # "0"
+
+@skip module want_to_skip_this_module
+sleep(3)
+end
+
+Jive.Skipped.modules
+```
