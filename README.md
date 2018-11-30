@@ -62,3 +62,11 @@ end
 
 Jive.Skipped.modules
 ```
+
+
+* `@If` ([test/jive/If](https://github.com/wookay/Jive.jl/blob/master/test/jive/If/If.jl))
+```julia
+using Jive # @If
+@If VERSION >= v"1.1.0-DEV.764" module load_some_module
+end
+```

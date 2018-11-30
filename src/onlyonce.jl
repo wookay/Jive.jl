@@ -1,6 +1,6 @@
 # module Jive
 
-if !isdefined(Main, :only_once_evaluated)
+if !isdefined(@__MODULE__, :only_once_evaluated)
     only_once_evaluated = Set{LineNumberNode}()
 end
 

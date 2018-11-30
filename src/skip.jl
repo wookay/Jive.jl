@@ -11,7 +11,7 @@ macro skip(expr::Expr)
         push!(Skipped.modules, name)
         nothing
     else
-        Main.eval(expr)
+        Base.eval(__module__, expr)
     end
 end
 

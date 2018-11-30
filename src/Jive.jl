@@ -9,4 +9,7 @@ include("skip.jl")
 export @onlyonce
 include("onlyonce.jl")
 
+export @If
+include("If.jl")
+
 end # module Jive
