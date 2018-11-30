@@ -1,5 +1,10 @@
 # Jive 👣
 
+|  **Build Status**               |
+|:-------------------------------:|
+|  [![][travis-img]][travis-url]  |
+
+
 * `@mockup` ([test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup))
 ```julia
 using Jive # Mock @mockup
@@ -70,3 +75,7 @@ using Jive # @If
 @If VERSION >= v"1.1.0-DEV.764" module load_some_module
 end
 ```
+
+
+[travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
+[travis-url]: https://travis-ci.org/wookay/Jive.jl
