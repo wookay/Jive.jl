@@ -1,8 +1,8 @@
 # Jive 👣
 
-|  **Build Status**               |
-|:-------------------------------:|
-|  [![][travis-img]][travis-url]  |
+|  **Build Status**                                               |
+|:---------------------------------------------------------------:|
+|  [![][travis-img]][travis-url]  [![][codecov-img]][codecov-url] |
 
 
 * `@mockup` ([test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup))
@@ -79,3 +79,6 @@ end
 
 [travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/wookay/Jive.jl
+
+[codecov-img]: https://codecov.io/gh/wookay/Jive.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/wookay/Jive.jl/branch/master
