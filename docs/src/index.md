@@ -1,10 +1,5 @@
 # Jive 👣
 
-|  **Documentation**                        |  **Build Status**                                                |
-|:-----------------------------------------:|:----------------------------------------------------------------:|
-|  [![][docs-latest-img]][docs-latest-url]  |  [![][travis-img]][travis-url]  [![][codecov-img]][codecov-url]  |
-
-
 * `@mockup` ([test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup))
 ```julia
 using Jive # Mock @mockup
@@ -83,13 +78,3 @@ using Jive # runtests
 runtests(@__DIR__)
 ```
 ![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
-
-
-[docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-latest-url]: https://wookay.github.io/docs/Jive.jl/
-
-[travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/wookay/Jive.jl
-
-[codecov-img]: https://codecov.io/gh/wookay/Jive.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/wookay/Jive.jl/branch/master
