@@ -77,6 +77,13 @@ end
 ```
 
 
+* `runtests` ([test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl))
+```julia
+using Jive # runtests
+runtests(@__DIR__)
+```
+
+
 [travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/wookay/Jive.jl
 

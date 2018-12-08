@@ -12,4 +12,7 @@ include("onlyonce.jl")
 export @If
 include("If.jl")
 
+export runtests
+include("runtests.jl")
+
 end # module Jive
