@@ -1,3 +1,6 @@
+desc = "some useful steps in tests"
+keywords = ["test"]
+license = "MIT"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
 name = "Jive"
 uuid = "6ea17500-d18f-11e8-3cf5-7930f07cb877"
