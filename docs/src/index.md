@@ -2,14 +2,84 @@
 
 `Jive.jl` is a Julia package to help the writing tests.
 
-  - [@mockup](#mockup) the modules
-  - [@onlyonce](#onlyonce) run
-  - [@skip](#skip) the code
-  - [@If](#If) module
   - [runtests](#runtests)
+  - [@skip](#skip)
+  - [@onlyonce](#onlyonce)
+  - [@If](#If)
+  - [@mockup](#mockup)
+
+
+### runtests
+
+run the test files from the specific directory.
+
+* [test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl)
+
+```julia
+using Jive # runtests
+runtests(@__DIR__)
+```
+![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
+
+
+### @skip
+
+skip a module, function, or call.
+
+* [test/jive/skip](https://github.com/wookay/Jive.jl/blob/master/test/jive/skip)
+
+```julia
+using Jive # @skip
+
+@skip module want_to_skip_this_module
+sleep(2)
+end
+
+@skip function want_to_skip_this_function()
+sleep(2)
+end
+
+@skip println(1+2)
+
+Jive.Skipped.modules
+Jive.Skipped.functions
+Jive.Skipped.calls
+```
+
+  - Change to don't skip the code: set `ENV["JIVE_SKIP"] = "0"`
+
+
+### @onlyonce
+
+used to run the block only once.
+
+* [test/jive/onlyonce](https://github.com/wookay/Jive.jl/tree/master/test/jive/onlyonce)
+
+```julia
+using Jive # @onlyonce
+
+@onlyonce begin
+    println(42)
+end
+```
+
+
+### @If
+
+evaluate the module by the condition.
+
+* [test/jive/If](https://github.com/wookay/Jive.jl/blob/master/test/jive/If)
+
+```julia
+using Jive # @If
+@If VERSION >= v"1.1.0-DEV.764" module load_some_module
+end
+```
 
 
 ### @mockup
+
+used to produce a replica from the other module.
 
 * [test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup)
 
@@ -50,63 +120,3 @@ end # @mockup module Goods
 @test Goods3 isa Module
 @test Goods3.g === Mock.Goods.g
 ```
-
-
-### @onlyonce
-
-* [test/jive/onlyonce](https://github.com/wookay/Jive.jl/tree/master/test/jive/onlyonce)
-
-```julia
-using Jive # @onlyonce
-
-@onlyonce begin
-    println(42)
-end
-```
-
-
-### @skip
-
-* [test/jive/skip](https://github.com/wookay/Jive.jl/blob/master/test/jive/skip)
-
-```julia
-using Jive # @skip
-
-@skip module want_to_skip_this_module
-sleep(2)
-end
-
-@skip function want_to_skip_this_function()
-sleep(2)
-end
-
-@skip println(1+2)
-
-Jive.Skipped.modules
-Jive.Skipped.functions
-Jive.Skipped.calls
-```
-
-  - Do not skip the code: `ENV["JIVE_SKIP"] = "0"`
-
-
-### @If
-
-* [test/jive/If](https://github.com/wookay/Jive.jl/blob/master/test/jive/If)
-
-```julia
-using Jive # @If
-@If VERSION >= v"1.1.0-DEV.764" module load_some_module
-end
-```
-
-
-### runtests
-
-* [test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl)
-
-```julia
-using Jive # runtests
-runtests(@__DIR__)
-```
-![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)

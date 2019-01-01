@@ -4,6 +4,11 @@ if !isdefined(@__MODULE__, :only_once_evaluated)
     only_once_evaluated = Set{LineNumberNode}()
 end
 
+"""
+    @onlyonce(block)
+
+used to run the block only once.
+"""
 macro onlyonce(block)
     line = block.args[1]
     if line in only_once_evaluated

@@ -1,11 +1,21 @@
 # module Jive
 
+"""
+    Skipped
+
+Skipped symbols are in `Skipped.modules`, `Skipped.functions`, `Skipped.calls`
+"""
 module Skipped
 modules = []
 functions = []
 calls = []
 end # Jive.Skipped
 
+"""
+    @skip
+
+skip a module, function, or call.
+"""
 macro skip(expr::Expr)
     JIVE_SKIP = get(ENV, "JIVE_SKIP", "1") == "1"
     if JIVE_SKIP

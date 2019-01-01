@@ -10,5 +10,10 @@ makedocs(
     authors = "WooKyoung Noh",
     pages = Any[
         "Home" => "index.md",
+        "runtests" => "runtests.md",
+        "@skip" => "skip.md",
+        "@onlyonce" => "onlyonce.md",
+        "@If" => "If.md",
+        "@mockup" => "mockup.md",
     ],
 )

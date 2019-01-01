@@ -2,6 +2,11 @@
 
 config = Dict(:warn_replacing_mock => false)
 
+"""
+    Mock
+
+The Mock store for mocked modules.
+"""
 module Mock
 end # Jive.Mock
 
@@ -45,6 +50,11 @@ function mockup_a_module(modul::Module, expr::Expr, used::Vector{Symbol}, funcs:
     toplevel
 end
 
+"""
+    @mockup
+
+used to produce a replica from the other module.
+"""
 macro mockup(expr::Expr)
     name = expr.args[2]
     modul = getfield(__module__, name)

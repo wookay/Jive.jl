@@ -25,6 +25,11 @@ function run(dir::String, tests::Vector{String})
     end
 end
 
+"""
+    runtests(dir::String)
+
+run the test files from the specific directory.
+"""
 function runtests(dir::String)
     all_tests = Vector{String}()
     for (root, dirs, files) in walkdir(dir)
