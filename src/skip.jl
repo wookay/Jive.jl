@@ -3,6 +3,7 @@
 module Skipped
 modules = []
 functions = []
+calls = []
 end # Jive.Skipped
 
 macro skip(expr::Expr)
@@ -15,6 +16,8 @@ macro skip(expr::Expr)
         elseif typ == :function
             fexpr = expr.args[1]
             push!(Skipped.functions, first(fexpr.args))
+        elseif typ == :call
+            push!(Skipped.calls, first(expr.args))
         end
         nothing
     else
