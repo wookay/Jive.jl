@@ -5,7 +5,19 @@
 |  [![][docs-latest-img]][docs-latest-url]  |  [![][travis-img]][travis-url]  [![][codecov-img]][codecov-url]  |
 
 
-* `@mockup` ([test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup))
+`Jive.jl` is a Julia package to help the writing tests.
+
+  - [@mockup](#mockup) the modules
+  - [@onlyonce](#onlyonce) run
+  - [@skip](#skip) the code
+  - [@If](#If) module
+  - [runtests](#runtests)
+
+
+### @mockup
+
+* [test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup)
+
 ```julia
 using Jive # Mock @mockup
 using Test
@@ -45,7 +57,10 @@ end # @mockup module Goods
 ```
 
 
-* `@onlyonce` ([test/jive/onlyonce](https://github.com/wookay/Jive.jl/tree/master/test/jive/onlyonce))
+### @onlyonce
+
+* [test/jive/onlyonce](https://github.com/wookay/Jive.jl/tree/master/test/jive/onlyonce)
+
 ```julia
 using Jive # @onlyonce
 
@@ -55,21 +70,35 @@ end
 ```
 
 
-* `@skip` ([test/jive/skip](https://github.com/wookay/Jive.jl/blob/master/test/jive/skip/skip.jl))
+### @skip
+
+* [test/jive/skip](https://github.com/wookay/Jive.jl/blob/master/test/jive/skip)
+
 ```julia
 using Jive # @skip
 
-ENV["JIVE_SKIP"] = "1"   # "0"
-
 @skip module want_to_skip_this_module
-sleep(3)
+sleep(2)
 end
 
+@skip function want_to_skip_this_function()
+sleep(2)
+end
+
+@skip println(1+2)
+
 Jive.Skipped.modules
+Jive.Skipped.functions
+Jive.Skipped.calls
 ```
 
+  - Do not skip the code: `ENV["JIVE_SKIP"] = "0"`
 
-* `@If` ([test/jive/If](https://github.com/wookay/Jive.jl/blob/master/test/jive/If/If.jl))
+
+### @If
+
+* [test/jive/If](https://github.com/wookay/Jive.jl/blob/master/test/jive/If)
+
 ```julia
 using Jive # @If
 @If VERSION >= v"1.1.0-DEV.764" module load_some_module
@@ -77,7 +106,10 @@ end
 ```
 
 
-* `runtests` ([test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl))
+### runtests
+
+* [test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl)
+
 ```julia
 using Jive # runtests
 runtests(@__DIR__)
