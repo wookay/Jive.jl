@@ -4,7 +4,7 @@ license = "MIT"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
 name = "Jive"
 uuid = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
-version = "0.1.2-DEV"
+version = "0.1.2"
 
 [deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
