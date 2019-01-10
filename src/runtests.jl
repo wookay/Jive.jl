@@ -1,5 +1,7 @@
 # module Jive
 
+using Distributed # nprocs addprocs
+
 """
     runtests(dir::String)
 
@@ -16,7 +18,36 @@ function runtests(dir::String)
             push!(all_tests, subpath)
         end
     end
-    run(dir, all_tests)
+    env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
+    if "0" == env_jive_procs
+        run(dir, all_tests)
+    else
+        num_procs = nprocs()
+        if isempty(env_jive_procs)
+        elseif "auto" == env_jive_procs
+            Sys.CPU_THREADS > num_procs && addprocs(Sys.CPU_THREADS - num_procs + 1)
+        else
+            jive_procs = parse(Int, env_jive_procs)
+            jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
+        end
+        if nprocs() > 1
+            distributed_run(dir, all_tests)
+        else
+            run(dir, all_tests)
+        end
+    end
+end
+
+function report(io::IO, t0, anynonpass, n_passed)
+    if iszero(anynonpass) && n_passed > 0
+        printstyled(io, "✅  ", color=:green)
+        print(io, "All ")
+        printstyled(io, n_passed, color=:green)
+        print(io, " ")
+        print(io, n_passed == 1 ? "test has" : "tests have")
+        print(io, " been completed.")
+        Base.Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
+    end
 end
 
 
@@ -25,50 +56,52 @@ module CodeFromStdlibTest
 
 using Test: GLOBAL_RNG, TESTSET_PRINT_ENABLE, DefaultTestSet, Error, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, get_test_counts, filter_errors
 
-function jive_briefing(numbering, subpath, ts::DefaultTestSet)
-    printstyled(numbering, color=:underline)
-    println(' ', subpath)
+function jive_briefing(io::IO, numbering, subpath, ts::DefaultTestSet)
+    printstyled(io, numbering, color=:underline)
+    print(io, ' ', subpath)
+    !isempty(ts.description) && print(io, ' ', ts.description)
+    println(io)
 end
 
 # print_counts
-function jive_print_counts(ts::DefaultTestSet, elapsedtime)
+function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
     passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-
-    np = passes + c_passes
-    if np > 0
-        print(repeat(' ', 4))
-        printstyled("Pass", " "; bold=true, color=:green)
-        printstyled(np, color=:green)
-        Base.Printf.@printf("  (%.2f seconds)\n", elapsedtime)
-    end
 
     nf = fails + c_fails
     if nf > 0
-        print(repeat(' ', 4))
-        printstyled("Fail", " "; bold=true, color=Base.error_color())
-        printstyled(nf, color=Base.error_color())
-        println()
+        print(io, repeat(' ', 4))
+        printstyled(io, "Fail", " "; bold=true, color=Base.error_color())
+        printstyled(io, nf, color=Base.error_color())
+        println(io)
     end
 
     ne = errors + c_errors
     if ne > 0
-        print(repeat(' ', 4))
-        printstyled("Error", " "; bold=true, color=Base.error_color())
-        printstyled(ne, color=Base.error_color())
-        println()
+        print(io, repeat(' ', 4))
+        printstyled(io, "Error", " "; bold=true, color=Base.error_color())
+        printstyled(io, ne, color=Base.error_color())
+        println(io)
     end
 
     nb = broken + c_broken
     if nb > 0
-        print(repeat(' ', 4))
-        printstyled("Broken", " "; bold=true, color=Base.warn_color())
-        printstyled(nb, color=Base.warn_color())
-        println()
+        print(io, repeat(' ', 4))
+        printstyled(io, "Broken", " "; bold=true, color=Base.warn_color())
+        printstyled(io, nb, color=Base.warn_color())
+        println(io)
+    end
+
+    np = passes + c_passes
+    if np > 0
+        print(io, repeat(' ', 4))
+        printstyled(io, "Pass", " "; bold=true, color=:green)
+        printstyled(io, np, color=:green)
+        Base.Printf.@printf(io, "  (%.2f seconds)\n", elapsedtime)
     end
 end
 
 # finish
-function jive_finish(ts::DefaultTestSet, elapsedtime)
+function jive_finish(io::IO, ts::DefaultTestSet, elapsedtime)
     #Base.timev_print(t, memallocs)
     # If we are a nested test set, do not print a full summary
     # now - let the parent test set do the printing
@@ -86,7 +119,7 @@ function jive_finish(ts::DefaultTestSet, elapsedtime)
     total = total_pass + total_fail + total_error + total_broken
 
     if TESTSET_PRINT_ENABLE[]
-        jive_print_counts(ts, elapsedtime) # print_test_results(ts)
+        jive_print_counts(io, ts, elapsedtime) # print_test_results(ts)
     end
 
     # Finally throw an error as we are the outermost test set
@@ -101,7 +134,7 @@ function jive_finish(ts::DefaultTestSet, elapsedtime)
 end
 
 # testset_beginend
-function jive_testset_beginend(numbering, subpath, args, tests, source)
+function jive_testset_beginend(io, numbering, subpath, args, tests, source)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc === nothing
         desc = "test set"
@@ -119,7 +152,7 @@ function jive_testset_beginend(numbering, subpath, args, tests, source)
     ex = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
         ts = $(testsettype)($desc; $options...)
-        jive_briefing($(esc(numbering)), $(esc(subpath)), ts)
+        jive_briefing($(esc(io)), $(esc(numbering)), $(esc(subpath)), ts)
         # this empty loop is here to force the block to be compiled,
         # which is needed for backtrace scrubbing to work correctly.
         while false; end
@@ -141,7 +174,7 @@ function jive_testset_beginend(numbering, subpath, args, tests, source)
             copy!(GLOBAL_RNG, oldrng)
         end
         pop_testset()
-        jive_finish(ts, elapsedtime) # finish(ts)
+        jive_finish($(esc(io)), ts, elapsedtime) # finish(ts)
     end
     # preserve outer location if possible
     if tests isa Expr && tests.head === :block && !isempty(tests.args) && tests.args[1] isa LineNumberNode
@@ -151,38 +184,86 @@ function jive_testset_beginend(numbering, subpath, args, tests, source)
 end
 
 # @testset
-macro jive_testset(numbering, subpath, args...)
+macro jive_testset(io, numbering, subpath, args...)
     tests = args[end]
-    return jive_testset_beginend(numbering, subpath, args, tests, __source__)
+    return jive_testset_beginend(io, numbering, subpath, args, tests, __source__)
 end
 
 end # module CodeFromStdlibTest
 
 
+# code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
+module CodeFromJuliaTest
+
+using ..CodeFromStdlibTest: @jive_testset
+using ..Jive: report
+using Test.Random # RandomDevice
+using Distributed # @everywhere remotecall_fetch
+
+function runner(worker, idx, num_tests, subpath, filepath)
+    numbering = string(idx, /, num_tests)
+    buf = IOBuffer()
+    context = IOContext(buf, :color => true)
+    ts = @jive_testset context numbering subpath " (worker: $worker)" begin
+        Main.include(filepath)
+    end
+    (ts, buf)
+end
+
+function distributed_run(dir::String, tests::Vector{String})
+    io = stdout
+    printstyled(io, "Sys.CPU_THREADS", color=:cyan)
+    printstyled(io, ": ", Sys.CPU_THREADS)
+    printstyled(io, ", ")
+    printstyled(io, "nworkers()", color=:cyan)
+    printstyled(io, ": ", nworkers())
+    println(io)
+
+    idx = 0
+    num_tests = length(tests)
+    @everywhere @eval(Main, using Jive)
+    n_passed = 0
+    anynonpass = 0
+    local t0 = time_ns()
+    @sync begin
+        for worker in workers()
+            @async begin
+                while length(tests) > 0
+                    idx += 1
+                    subpath = popfirst!(tests)
+                    filepath = normpath(dir, subpath)
+                    f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
+                    (ts, buf) = fetch(f)
+                    print(io, String(take!(buf)))
+                    n_passed += ts.n_passed
+                    anynonpass += ts.anynonpass
+                end
+            end
+        end
+    end
+    report(io, t0, anynonpass, n_passed)
+end
+
+end # module CodeFromJuliaTest
+
+using .CodeFromJuliaTest: distributed_run
 using .CodeFromStdlibTest: @jive_testset
 
 function run(dir::String, tests::Vector{String})
-    local t0 = time_ns()
+    io = stdout
     n_passed = 0
     anynonpass = 0
+    local t0 = time_ns()
     for (idx, subpath) in enumerate(tests)
         filepath = normpath(dir, subpath) 
         numbering = string(idx, /, length(tests))
-        ts = @jive_testset numbering subpath "" begin
+        ts = @jive_testset io numbering subpath "" begin
             Main.include(filepath)
         end
         n_passed += ts.n_passed
         anynonpass += ts.anynonpass
     end
-    if iszero(anynonpass) && n_passed > 0
-        printstyled("✅  ", color=:green)
-        print("All ")
-        printstyled(n_passed, color=:green)
-        print(" ")
-        print(n_passed == 1 ? "test has" : "tests have")
-        print(" been completed.")
-        Base.Printf.@printf("  (%.2f seconds)\n", (time_ns()-t0)/1e9)
-    end
+    report(io, t0, anynonpass, n_passed)
 end
 
 # module Jive
