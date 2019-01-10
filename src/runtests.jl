@@ -31,7 +31,7 @@ function jive_briefing(numbering, subpath, ts::DefaultTestSet)
 end
 
 # print_counts
-function jive_print_counts(ts::DefaultTestSet)
+function jive_print_counts(ts::DefaultTestSet, elapsedtime)
     passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
 
     np = passes + c_passes
@@ -39,7 +39,7 @@ function jive_print_counts(ts::DefaultTestSet)
         print(repeat(' ', 4))
         printstyled("Pass", " "; bold=true, color=:green)
         printstyled(np, color=:green)
-        println()
+        Base.Printf.@printf("  (%.2f seconds)\n", elapsedtime)
     end
 
     nf = fails + c_fails
@@ -68,7 +68,8 @@ function jive_print_counts(ts::DefaultTestSet)
 end
 
 # finish
-function jive_finish(ts::DefaultTestSet)
+function jive_finish(ts::DefaultTestSet, elapsedtime)
+    #Base.timev_print(t, memallocs)
     # If we are a nested test set, do not print a full summary
     # now - let the parent test set do the printing
     if get_testset_depth() != 0
@@ -85,7 +86,7 @@ function jive_finish(ts::DefaultTestSet)
     total = total_pass + total_fail + total_error + total_broken
 
     if TESTSET_PRINT_ENABLE[]
-        jive_print_counts(ts) # print_test_results(ts)
+        jive_print_counts(ts, elapsedtime) # print_test_results(ts)
     end
 
     # Finally throw an error as we are the outermost test set
@@ -127,7 +128,7 @@ function jive_testset_beginend(numbering, subpath, args, tests, source)
         # cannot be used as it changes slightly the semantic of @testset,
         # by wrapping the body in a function
         oldrng = copy(GLOBAL_RNG)
-        try
+        elapsedtime = @elapsed try
             # GLOBAL_RNG is re-seeded with its own seed to ease reproduce a failed test
             Random.seed!(GLOBAL_RNG.seed)
             $(esc(tests))
@@ -140,7 +141,7 @@ function jive_testset_beginend(numbering, subpath, args, tests, source)
             copy!(GLOBAL_RNG, oldrng)
         end
         pop_testset()
-        jive_finish(ts) # finish(ts)
+        jive_finish(ts, elapsedtime) # finish(ts)
     end
     # preserve outer location if possible
     if tests isa Expr && tests.head === :block && !isempty(tests.args) && tests.args[1] isa LineNumberNode
@@ -161,6 +162,7 @@ end # module CodeFromStdlibTest
 using .CodeFromStdlibTest: @jive_testset
 
 function run(dir::String, tests::Vector{String})
+    local t0 = time_ns()
     n_passed = 0
     anynonpass = 0
     for (idx, subpath) in enumerate(tests)
@@ -179,7 +181,7 @@ function run(dir::String, tests::Vector{String})
         print(" ")
         print(n_passed == 1 ? "test has" : "tests have")
         print(" been completed.")
-        println()
+        Base.Printf.@printf("  (%.2f seconds)\n", (time_ns()-t0)/1e9)
     end
 end
 
