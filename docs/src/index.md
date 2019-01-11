@@ -40,7 +40,9 @@ runtests(@__DIR__)
 
 * distributed run tests for `Pkg.test()`, using `JIVE_PROCS` ENV.
 ```sh
-~/.julia/dev/Jive $ JIVE_PROCS=2 julia --project=. -e 'using Pkg; Pkg.test()'
+~/.julia/dev/Jive $ JIVE_PROCS=2 julia --color=yes --project=. -e 'using Pkg; Pkg.test()'
+
+~/.julia/dev/Jive $ julia --color=yes --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
 ```
 
 

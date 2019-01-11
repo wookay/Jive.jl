@@ -1,13 +1,23 @@
 # module Jive
 
-using Distributed # nprocs addprocs
+using Distributed # nprocs addprocs rmprocs
+
+function slash_to_path_separator(subpath::String)
+    sep = Base.Filesystem.path_separator
+    sep == "/" ? subpath : replace(subpath, "/" => sep)
+end
+
+function path_separator_to_slash(subpath::String)
+    sep = Base.Filesystem.path_separator
+    sep == "/" ? subpath : replace(subpath, sep => "/")
+end
 
 """
-    runtests(dir::String)
+    runtests(dir::String; node1::Vector{String}=Vector{String}())
 
 run the test files from the specific directory.
 """
-function runtests(dir::String)
+function runtests(dir::String; node1::Vector{String}=Vector{String}())
     all_tests = Vector{String}()
     for (root, dirs, files) in walkdir(dir)
         for filename in files
@@ -16,7 +26,7 @@ function runtests(dir::String)
             subpath = relpath(normpath(root, filename), dir)
             if !isempty(ARGS)
                 sep = Base.Filesystem.path_separator
-                !any(x -> startswith(subpath, (occursin('/', x) && sep != "/") ? replace(x, "/" => sep) : x), ARGS) && continue
+                !any(x -> startswith(subpath, slash_to_path_separator(x)), ARGS) && continue
             end
             push!(all_tests, subpath)
         end
@@ -34,7 +44,7 @@ function runtests(dir::String)
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            distributed_run(dir, all_tests)
+            distributed_run(dir, all_tests, node1)
         else
             run(dir, all_tests)
         end
@@ -192,14 +202,14 @@ macro jive_testset(io, numbering, subpath, args...)
     return jive_testset_beginend(io, numbering, subpath, args, tests, __source__)
 end
 
-end # module CodeFromStdlibTest
+end # module Jive.CodeFromStdlibTest
 
 
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 module CodeFromJuliaTest
 
 using ..CodeFromStdlibTest: @jive_testset
-using ..Jive: report
+using ..Jive: path_separator_to_slash, report
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
 
@@ -213,7 +223,7 @@ function runner(worker, idx, num_tests, subpath, filepath)
     (ts, buf)
 end
 
-function distributed_run(dir::String, tests::Vector{String})
+function distributed_run(dir::String, tests::Vector{String}, node1::Vector{String})
     io = stdout
     printstyled(io, "Sys.CPU_THREADS", color=:cyan)
     printstyled(io, ": ", Sys.CPU_THREADS)
@@ -224,30 +234,63 @@ function distributed_run(dir::String, tests::Vector{String})
 
     idx = 0
     num_tests = length(tests)
+    node1_tests = []
     @everywhere @eval(Main, using Jive)
+    subpath = nothing
     n_passed = 0
     anynonpass = 0
     local t0 = time_ns()
-    @sync begin
-        for worker in workers()
-            @async begin
-                while length(tests) > 0
-                    idx += 1
-                    subpath = popfirst!(tests)
-                    filepath = normpath(dir, subpath)
-                    f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
-                    (ts, buf) = fetch(f)
-                    print(io, String(take!(buf)))
-                    n_passed += ts.n_passed
-                    anynonpass += ts.anynonpass
+    try
+        @sync begin
+            for worker in workers()
+                @async begin
+                    while length(tests) > 0
+                        idx += 1
+                        subpath = popfirst!(tests)
+                        if path_separator_to_slash(subpath) in node1
+                            push!(node1_tests, (idx, subpath))
+                        else
+                            filepath = normpath(dir, subpath)
+                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
+                            (ts, buf) = fetch(f)
+                            print(io, String(take!(buf)))
+                            n_passed += ts.n_passed
+                            anynonpass += ts.anynonpass
+                        end
+                    end
+                    if worker != 1
+                        # Free up memory =)
+                        rmprocs(worker, waitfor=0)
+                    end
+                    subpath = nothing
                 end
             end
         end
+        for (idx, subpath) in node1_tests
+            filepath = normpath(dir, subpath)
+            (ts, buf) = runner(1, idx, num_tests, subpath, filepath)
+            print(io, String(take!(buf)))
+            n_passed += ts.n_passed
+            anynonpass += ts.anynonpass
+        end
+    catch err
+        if subpath isa Nothing
+            @warn :catch err
+        else
+            printstyled(io, "Retrying to run ")
+            printstyled(io, subpath; bold=true)
+            printstyled(io, " on")
+            filepath = normpath(dir, subpath)
+            runner(myid(), idx, num_tests, subpath, filepath)
+        end
+    finally
+        GC.gc()
     end
     report(io, t0, anynonpass, n_passed)
 end
 
-end # module CodeFromJuliaTest
+end # module Jive.CodeFromJuliaTest
+
 
 using .CodeFromJuliaTest: distributed_run
 using .CodeFromStdlibTest: @jive_testset
