@@ -14,7 +14,10 @@ function runtests(dir::String)
             !endswith(filename, ".jl") && continue
             "runtests.jl" == filename && continue
             subpath = relpath(normpath(root, filename), dir)
-            !isempty(ARGS) && !any(x->startswith(subpath, x), ARGS) && continue
+            if !isempty(ARGS)
+                sep = Base.Filesystem.path_separator
+                !any(x -> startswith(subpath, (occursin('/', x) && sep != "/") ? replace(x, "/" => sep) : x), ARGS) && continue
+            end
             push!(all_tests, subpath)
         end
     end
