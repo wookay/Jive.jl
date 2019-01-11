@@ -9,9 +9,9 @@
   - [@mockup](#mockup)
 
 
-### runtests
+# runtests
 
-run the test files from the specific directory.
+run test files with target directory and distributed run tests.
 
 * [test/runtests.jl](https://github.com/wookay/Jive.jl/blob/master/test/runtests.jl)
 
@@ -21,8 +21,30 @@ runtests(@__DIR__)
 ```
 ![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
 
+### Examples
 
-### @skip
+* run tests
+```sh
+~/.julia/dev/Jive/test $ julia --color=yes runtests.jl
+```
+
+* run tests with target directory.
+```sh
+~/.julia/dev/Jive/test $ julia --color=yes runtests.jl jive/If
+```
+
+* distributed run tests with `-p`
+```sh
+~/.julia/dev/Jive/test $ julia --color=yes -p1 runtests.jl
+```
+
+* distributed run tests for `Pkg.test()`, using `JIVE_PROCS` ENV.
+```sh
+~/.julia/dev/Jive $ JIVE_PROCS=2 julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+
+# @skip
 
 skip a module, function, or call.
 
@@ -49,7 +71,7 @@ Jive.Skipped.calls
   - Change to don't skip the code: set `ENV["JIVE_SKIP"] = "0"`
 
 
-### @onlyonce
+# @onlyonce
 
 used to run the block only once.
 
@@ -64,7 +86,7 @@ end
 ```
 
 
-### @If
+# @If
 
 evaluate the module by the condition.
 
@@ -77,7 +99,7 @@ end
 ```
 
 
-### @mockup
+# @mockup
 
 used to produce a replica from the other module.
 
