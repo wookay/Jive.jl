@@ -12,7 +12,6 @@ runtests(@__DIR__)
 ```
 ![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
 
-
 ### Examples
 
 * run tests
@@ -20,7 +19,7 @@ runtests(@__DIR__)
 ~/.julia/dev/Jive/test $ julia --color=yes runtests.jl
 ```
 
-* run tests with the target directory.
+* run tests with target directory.
 ```sh
 ~/.julia/dev/Jive/test $ julia --color=yes runtests.jl jive/If
 ```
