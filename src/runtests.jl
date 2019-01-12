@@ -13,13 +13,15 @@ function path_separator_to_slash(subpath::String)
 end
 
 """
-    runtests(dir::String; skip::Vector{String}=Vector{String}(), node1::Vector{String}=Vector{String}())
+    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=Vector{String}(), node1::Union{Vector{Any},Vector{String}}=Vector{String}())
 
 run the test files from the specific directory.
+
+* `dir`: the root directory to traverse.
+* `skip`: files or directories to skip.
+* `node1`: run on node 1 during for the distributed tests.
 """
-function runtests(dir::String;
-        skip::Vector{String}=Vector{String}(),
-        node1::Vector{String}=Vector{String}())
+function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=Vector{String}(), node1::Union{Vector{Any},Vector{String}}=Vector{String}())
     all_tests = Vector{String}()
     filters = []
     start_idx = 1
