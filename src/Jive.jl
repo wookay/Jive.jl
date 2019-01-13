@@ -12,6 +12,9 @@ include("onlyonce.jl")
 export @If
 include("If.jl")
 
+export @useinside
+include("useinside.jl")
+
 export runtests
 include("runtests.jl")
 
