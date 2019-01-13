@@ -3,6 +3,7 @@ module test_jive_skip_calls
 using Jive # Skipped @skip
 using Test # @test
 
+empty!(Jive.Skipped.calls)
 
 function want_to_skip()
 sleep(3)

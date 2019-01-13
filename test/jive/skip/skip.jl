@@ -3,6 +3,7 @@ module test_jive_skip
 using Jive # Skipped @skip
 using Test # @test
 
+empty!(Jive.Skipped.modules)
 
 @skip module want_to_skip
 sleep(3)
