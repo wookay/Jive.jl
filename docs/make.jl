@@ -11,9 +11,11 @@ makedocs(
     pages = Any[
         "Home" => "index.md",
         "runtests" => "runtests.md",
+        "watch" => "watch.md",
         "@skip" => "skip.md",
         "@onlyonce" => "onlyonce.md",
         "@If" => "If.md",
+        "@useinside" => "useinside.md",
         "@mockup" => "mockup.md",
     ],
 )

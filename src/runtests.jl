@@ -12,21 +12,12 @@ function path_separator_to_slash(subpath::String)
     sep == "/" ? subpath : replace(subpath, sep => "/")
 end
 
-"""
-    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=Vector{String}(), node1::Union{Vector{Any},Vector{String}}=Vector{String}())
-
-run the test files from the specific directory.
-
-* `dir`: the root directory to traverse.
-* `skip`: files or directories to skip.
-* `node1`: run on node 1 during for the distributed tests.
-"""
-function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=Vector{String}(), node1::Union{Vector{Any},Vector{String}}=Vector{String}())
-    all_tests = Vector{String}()
+function get_all_files(dir, skip, targets)
+    all_files = Vector{String}()
     filters = []
     start_idx = 1
-    if !isempty(ARGS)
-        for arg in ARGS
+    if !isempty(targets)
+        for arg in targets
             if occursin('=', arg)
                 name, val = split(arg, '=')
                 if name == "start"
@@ -44,9 +35,24 @@ function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=Vector{St
             subpath = path_separator_to_slash(relpath(normpath(root, filename), dir))
             any(x -> startswith(subpath, x), path_separator_to_slash.(skip)) && continue
             !isempty(filters) && !any(x -> startswith(subpath, x), filters) && continue
-            push!(all_tests, subpath)
+            push!(all_files, subpath)
         end
     end
+    (all_files, start_idx)
+end
+
+"""
+    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS)
+
+run the test files from the specific directory.
+
+* `dir`: the root directory to traverse.
+* `skip`: files or directories to skip.
+* `node1`: run on node 1 during for the distributed tests.
+* `targets`: filter targets and start. default is `ARGS`
+"""
+function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS)
+    (all_tests, start_idx) = get_all_files(dir, skip, targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if "0" == env_jive_procs
         run(dir, all_tests)
@@ -96,6 +102,9 @@ using ..Jive: jive_briefing
 function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
     passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
 
+    print_lock = ReentrantLock()
+    lock(print_lock)
+
     nf = fails + c_fails
     if nf > 0
         print(io, repeat(' ', 4))
@@ -127,6 +136,8 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
         printstyled(io, np, color=:green)
         Base.Printf.@printf(io, "  (%.2f seconds)\n", elapsedtime)
     end
+
+    unlock(print_lock)
 end
 
 # finish
@@ -248,14 +259,15 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     printstyled(io, ": ", nworkers())
     println(io)
 
+    subpath = nothing
+    idx = 0
+    num_tests = length(tests)
+
     n_passed = 0
     anynonpass = 0
     local t0 = time_ns()
     try
-        idx = 0
-        num_tests = length(tests)
         node1_tests = []
-        subpath = nothing
         print_lock = ReentrantLock()
         @everywhere @eval(Main, using Jive)
         @sync begin
@@ -299,7 +311,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
         end
     catch err
         if subpath isa Nothing
-            @warn :catch err
+            @warn :distributed_run_catch err
         else
             printstyled(io, "Retrying to run ")
             printstyled(io, subpath; bold=true)

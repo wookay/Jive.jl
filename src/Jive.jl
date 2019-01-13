@@ -18,4 +18,7 @@ include("useinside.jl")
 export runtests
 include("runtests.jl")
 
+export watch
+include("watch.jl")
+
 end # module Jive

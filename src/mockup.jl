@@ -1,7 +1,5 @@
 # module Jive
 
-config = Dict(:warn_replacing_mock => false)
-
 """
     Mock
 
@@ -77,9 +75,7 @@ macro mockup(expr::Expr)
     end
     errmsg = fetch(errstream)
     if !isempty(errmsg)
-        if !config[:warn_replacing_mock]
-            errmsg = replace(errmsg, "WARNING: replacing module Mock.\n" => "")
-        end
+        errmsg = replace(errmsg, "WARNING: replacing module Mock.\n" => "")
         print(stderr, errmsg)
     end
     mockmodul
