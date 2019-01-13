@@ -7,6 +7,7 @@
   - [@skip](#skip)
   - [@onlyonce](#onlyonce)
   - [@If](#If)
+  - [@useinside](#useinside)
   - [@mockup](#mockup)
 
 
@@ -51,7 +52,7 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 
 * distributed run tests with `-p`
 ```sh
-~/.julia/dev/Jive/test $ julia --color=yes -p1 runtests.jl
+~/.julia/dev/Jive/test $ julia --color=yes -p3 runtests.jl
 ```
 
 * distributed run tests for `Pkg.test()`, using `JIVE_PROCS` ENV.
@@ -66,7 +67,7 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 
 watch the folders.
 
-```
+```sh
 ~/.julia/dev/Jive/test $ julia --color=yes -q -i runtests.jl jive/s
 1/3 jive/skip/skip-calls.jl
     Pass 2  (0.29 seconds)
@@ -138,6 +139,18 @@ evaluate the module by the condition.
 ```julia
 using Jive # @If
 @If VERSION >= v"1.1.0-DEV.764" module load_some_module
+end
+```
+
+
+# @useinside
+
+use inside of the module.
+
+```julia
+using Jive # @useinside
+@useinside module test_pkgs_flux_optimise
+# ...
 end
 ```
 
