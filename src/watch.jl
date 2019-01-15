@@ -46,11 +46,13 @@ function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vec
     for folder in folders
         fm = FolderMonitor(folder)
         loop = Task() do
+            last_time = 0
             while isopen(fm.notify)
                 (fname, events) = wait(fm)::Pair
-                if splitext(fname)[2] == ".jl"
+                if splitext(fname)[2] == ".jl" && time() - last_time > 0.010
                     filepath = normpath(folder, fname)
                     run_callback(callback, relpath(filepath, dir))
+                    last_time = time()
                 end
             end
         end

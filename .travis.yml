@@ -35,8 +35,8 @@ script:
   - julia --color=yes        runtests.jl jive/s
   - julia --color=yes        runtests.jl jive/s jive/m start=2
   - julia --color=yes -pauto runtests.jl jive/s jive/m start=2
-  - julia --color=yes        -e 'using Jive; runtests(@__DIR__, skip=["jive/s", "jive/I"])'
-  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/s"], node1=["jive/m"])'
+  - julia --color=yes        -e 'using Jive; runtests(@__DIR__, skip=["jive/onlyonce/heavy.jl", "jive/s", "jive/I"])'
+  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/onlyonce/heavy.jl", "jive/s"], node1=["jive/m"])'
 
 after_success:
   - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == nightly ]] ; then julia --project=. -e 'using Pkg;
