@@ -73,20 +73,23 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 watch the folders.
 
 ```sh
-~/.julia/dev/Jive/test $ julia --color=yes -q -i runtests.jl jive/s
-1/3 jive/skip/skip-calls.jl
-    Pass 2  (0.29 seconds)
-2/3 jive/skip/skip-functions.jl
-    Pass 4  (0.02 seconds)
-3/3 jive/skip/skip.jl
-    Pass 4  (0.01 seconds)
-✅   All 10 tests have been completed.  (0.61 seconds)
-julia> watch(@__DIR__, sources=[normpath(@__DIR__,"..","src")]) do path
-           @info :changed path
-           runtests(@__DIR__)
-       end
+~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
+using Jive
+runtests(@__DIR__, skip=["revise.jl"])
+
+~/.julia/dev/Jive/test/Example/test $ cat revise.jl
+using Revise, Jive
+using Example
+watch(@__DIR__, sources=[pathof(Example)]) do path
+    @info :changed path
+    revise()
+    runtests(@__DIR__, skip=["revise.jl"])
+end
+# Jive.stop(watch)
+
+~/.julia/dev/Jive/test/Example/test $ julia --project=.. -q -i revise.jl example
 watching folders ...
-  - jive/skip
+  - example
   - ../src
 ```
 

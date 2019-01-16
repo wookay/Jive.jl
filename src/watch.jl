@@ -12,7 +12,7 @@ watch the folders.
 function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vector{Any},Vector{String}}=[])
     (all_files, start_idx) = get_all_files(dir, [], targets)
     for src in sources
-        for (root, dirs, files) in walkdir(src)
+        for (root, dirs, files) in walkdir(isfile(src) ? dirname(src) : src)
             for filename in files
                 !endswith(filename, ".jl") && continue
                 subpath = path_separator_to_slash(relpath(normpath(root, filename), dir))
