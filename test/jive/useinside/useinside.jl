@@ -4,14 +4,16 @@ using Test
 using Jive
 
 module A
-val1 = 1
+val_in_A = 1
 end
 
-@useinside module B
-val2 = 1
+ret = @useinside module B
+val_in_B = 1
+42
 end
 
-@test val2 == 1
+@test val_in_B == 1
+@test ret == 42
 
 end # module test_jive_useinside
 
