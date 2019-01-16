@@ -70,7 +70,7 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 
 # watch
 
-watch the folders.
+watch the folders. You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
 
 ```sh
 ~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
