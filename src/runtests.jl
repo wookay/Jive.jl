@@ -55,7 +55,7 @@ function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1
     (all_tests, start_idx) = get_all_files(dir, skip, targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if "0" == env_jive_procs
-        run(dir, all_tests)
+        run(dir, all_tests, start_idx)
     else
         num_procs = nprocs()
         if isempty(env_jive_procs)
