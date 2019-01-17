@@ -1,8 +1,6 @@
 # module Jive
 
-if !isdefined(@__MODULE__, :only_once_evaluated)
-    only_once_evaluated = Set{LineNumberNode}()
-end
+onlyonce_evaluated = Set{LineNumberNode}()
 
 """
     @onlyonce(block)
@@ -11,10 +9,10 @@ used to run the block only once.
 """
 macro onlyonce(block)
     line = block.args[1]
-    if line in only_once_evaluated
+    if line in onlyonce_evaluated
         nothing
     else
-        push!(only_once_evaluated, line)
+        push!(onlyonce_evaluated, line)
         esc(block)
     end
 end
