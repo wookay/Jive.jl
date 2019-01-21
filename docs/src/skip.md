@@ -1,6 +1,6 @@
 # @skip
 
-skip a module, function, or call.
+skip the expression.
 
 ```@docs
 Jive.@skip
@@ -21,10 +21,6 @@ sleep(2)
 end
 
 @skip println(1+2)
-
-Jive.Skipped.modules
-Jive.Skipped.functions
-Jive.Skipped.calls
 ```
 
-  - Change to don't skip the code: `ENV["JIVE_SKIP"] = "0"`
+  - Change to do not skip the code: `ENV["JIVE_SKIP"] = "0"`

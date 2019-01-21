@@ -3,35 +3,69 @@
 """
     Skipped
 
-Skipped symbols are in `Skipped.modules`, `Skipped.functions`, `Skipped.calls`
+Skipped expressions are in `Skipped.expressions`
 """
 module Skipped
-modules = []
-functions = []
-calls = []
+expressions = []
 end # Jive.Skipped
+
+isjiveskip() = get(ENV, "JIVE_SKIP", "1") == "1"
 
 """
     @skip
 
-skip a module, function, or call.
+skip the expression.
 """
 macro skip(expr::Expr)
-    JIVE_SKIP = get(ENV, "JIVE_SKIP", "1") == "1"
-    if JIVE_SKIP
+    if isjiveskip()
         typ = expr.head
-        if typ == :module
+        if typ in (:module, :struct)
             name = expr.args[2]
-            push!(Skipped.modules, name)
-        elseif typ == :function
+            push!(Skipped.expressions, typ=>name)
+        elseif typ in (:function, :macro)
             fexpr = expr.args[1]
-            push!(Skipped.functions, first(fexpr.args))
-        elseif typ == :call
-            push!(Skipped.calls, first(expr.args))
+            push!(Skipped.expressions, typ=>first(fexpr.args))
+        elseif typ === :call
+            push!(Skipped.expressions, typ=>first(expr.args))
+        else
+            # @info :typ (typ, expr.args)
+            # do if quote block using return (=) vect
+            push!(Skipped.expressions, typ)
         end
         nothing
     else
-        Base.eval(__module__, expr)
+        esc(expr)
+    end
+end
+
+macro skip(node::QuoteNode)
+    if isjiveskip()
+        push!(Skipped.expressions, node.value)
+        nothing
+    else
+        esc(node)
+    end
+end
+
+macro skip(sym::Symbol)
+    if isjiveskip()
+        if sym === :nothing
+            push!(Skipped.expressions, nothing)
+        else
+            push!(Skipped.expressions, sym)
+        end
+        nothing
+    else
+        esc(sym)
+    end
+end
+
+macro skip(val::Any)
+    if isjiveskip()
+        push!(Skipped.expressions, val)
+        nothing
+    else
+        esc(val)
     end
 end
 
