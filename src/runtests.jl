@@ -319,6 +319,8 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             jive_briefing(io, numbering, subpath, string(" (worker: ", myid(), ")"), "")
             filepath = normpath(dir, slash_to_path_separator(subpath))
             runner(myid(), idx, num_tests, subpath, filepath)
+        else
+            @info :distributed_run_catch err
         end
     finally
         empty!(env)
