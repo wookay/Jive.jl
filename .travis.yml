@@ -6,15 +6,20 @@ language: julia
 
 julia:
   - 1.0
+  - 1.1
   - nightly
 
 matrix:
   exclude:
     - os: osx
-      julia: nightly
+      julia:
+        - 1.0
+        - nightly
 
     - os: windows
-      julia: nightly
+      julia:
+        - 1.0
+        - nightly
       language: julia
 
   include:
@@ -42,7 +47,7 @@ script:
   - julia --color=yes --project=. -e 'using Pkg; Pkg.test()' example
 
 after_success:
-  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == nightly ]] ; then julia --project=. -e 'using Pkg;
-                                                                                                           Pkg.add("Coverage");
-                                                                                                           using Coverage;
-                                                                                                           Codecov.submit(process_folder())' ; fi
+  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.1 ]] ; then julia --project=. -e 'using Pkg;
+                                                                                                       Pkg.add("Coverage");
+                                                                                                       using Coverage;
+                                                                                                       Codecov.submit(process_folder())' ; fi

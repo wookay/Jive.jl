@@ -85,10 +85,10 @@ function report(io::IO, t0, anynonpass, n_passed)
     end
 end
 
-function jive_briefing(io::IO, numbering, subpath, description)
+function jive_briefing(io::IO, numbering, subpath, msg, description)
     printstyled(io, numbering, color=:underline)
     print(io, ' ', subpath)
-    !isempty(description) && print(io, ' ', description)
+    !isempty(msg) && print(io, ' ', msg)
     println(io)
 end
 
@@ -174,10 +174,10 @@ function jive_finish(io::IO, ts::DefaultTestSet, elapsedtime)
 end
 
 # testset_beginend
-function jive_testset_beginend(io, numbering, subpath, args, tests, source)
+function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc === nothing
-        desc = "test set"
+        desc = ""
     end
     # If we're at the top level we'll default to DefaultTestSet. Otherwise
     # default to the type of the parent testset
@@ -192,7 +192,7 @@ function jive_testset_beginend(io, numbering, subpath, args, tests, source)
     ex = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
         ts = $(testsettype)($desc; $options...)
-        jive_briefing($(esc(io)), $(esc(numbering)), $(esc(subpath)), ts.description)
+        jive_briefing($(esc(io)), $(esc(numbering)), $(esc(subpath)), $(esc(msg)), ts.description)
         # this empty loop is here to force the block to be compiled,
         # which is needed for backtrace scrubbing to work correctly.
         while false; end
@@ -224,9 +224,9 @@ function jive_testset_beginend(io, numbering, subpath, args, tests, source)
 end
 
 # @testset
-macro jive_testset(io, numbering, subpath, args...)
+macro jive_testset(io, numbering, subpath, msg, args...)
     tests = args[end]
-    return jive_testset_beginend(io, numbering, subpath, args, tests, __source__)
+    return jive_testset_beginend(io, numbering, subpath, msg, args, tests, __source__)
 end
 
 end # module Jive.CodeFromStdlibTest
@@ -244,7 +244,7 @@ function runner(worker, idx, num_tests, subpath, filepath)
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     context = IOContext(buf, :color => true)
-    ts = @jive_testset context numbering subpath " (worker: $worker)" begin
+    ts = @jive_testset context numbering subpath " (worker: $worker)" "" begin
         Main.include(filepath)
     end
     (ts, buf)
@@ -259,15 +259,15 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     printstyled(io, ": ", nworkers())
     println(io)
 
-    subpath = nothing
     idx = 0
     num_tests = length(tests)
+    node1_tests = []
+    env = Dict{Int,Tuple{Int,String}}()
 
     n_passed = 0
     anynonpass = 0
     local t0 = time_ns()
     try
-        node1_tests = []
         @everywhere @eval(Main, using Jive)
         @sync begin
             for worker in workers()
@@ -275,11 +275,12 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                     while length(tests) > 0
                         idx += 1
                         subpath = popfirst!(tests)
+                        env[worker] = (idx, subpath)
                         if idx < start_idx
                             numbering = string(idx, /, num_tests)
                             print_lock = ReentrantLock()
                             lock(print_lock)
-                            jive_briefing(io, numbering, subpath, "--")
+                            jive_briefing(io, numbering, subpath, "--", "")
                             unlock(print_lock)
                             continue
                         end
@@ -293,33 +294,34 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             n_passed += ts.n_passed
                             anynonpass += ts.anynonpass
                         end
-                    end
+                    end # while length(tests) > 0
                     if worker != 1
                         # Free up memory =)
                         rmprocs(worker, waitfor=0)
                     end
-                    subpath = nothing
-                end
+                end # @async begin
+            end # for worker in workers()
+            for (idx, subpath) in node1_tests
+                filepath = normpath(dir, slash_to_path_separator(subpath))
+                (ts, buf) = runner(myid(), idx, num_tests, subpath, filepath)
+                print(io, String(take!(buf)))
+                n_passed += ts.n_passed
+                anynonpass += ts.anynonpass
             end
-        end
-        for (idx, subpath) in node1_tests
-            filepath = normpath(dir, slash_to_path_separator(subpath))
-            (ts, buf) = runner(1, idx, num_tests, subpath, filepath)
-            print(io, String(take!(buf)))
-            n_passed += ts.n_passed
-            anynonpass += ts.anynonpass
-        end
+        end # @sync begin
     catch err
-        if subpath isa Nothing
-            @warn :distributed_run_catch err
-        else
-            printstyled(io, "Retrying to run ")
-            printstyled(io, subpath; bold=true)
-            printstyled(io, " on")
+        if err isa CompositeException
+            worker = first(err.exceptions).ex.pid
+            (idx, subpath) = env[worker]
+            printstyled(io, "Retrying"; bold=true, color=:cyan)
+            printstyled(io, " ")
+            numbering = string(idx, /, num_tests)
+            jive_briefing(io, numbering, subpath, string(" (worker: ", myid(), ")"), "")
             filepath = normpath(dir, slash_to_path_separator(subpath))
             runner(myid(), idx, num_tests, subpath, filepath)
         end
     finally
+        empty!(env)
         GC.gc()
     end
     report(io, t0, anynonpass, n_passed)
@@ -340,12 +342,12 @@ function run(dir::String, tests::Vector{String}, start_idx::Int)
         if idx < start_idx
             num_tests = length(tests)
             numbering = string(idx, /, num_tests)
-            jive_briefing(io, numbering, subpath, "--")
+            jive_briefing(io, numbering, subpath, "--", "")
             continue
         end
         filepath = normpath(dir, slash_to_path_separator(subpath))
         numbering = string(idx, /, length(tests))
-        ts = @jive_testset io numbering subpath "" begin
+        ts = @jive_testset io numbering subpath "" "" begin
             Main.include(filepath)
         end
         n_passed += ts.n_passed
