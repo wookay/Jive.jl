@@ -268,7 +268,6 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     local t0 = time_ns()
     try
         node1_tests = []
-        print_lock = ReentrantLock()
         @everywhere @eval(Main, using Jive)
         @sync begin
             for worker in workers()
@@ -278,6 +277,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         subpath = popfirst!(tests)
                         if idx < start_idx
                             numbering = string(idx, /, num_tests)
+                            print_lock = ReentrantLock()
                             lock(print_lock)
                             jive_briefing(io, numbering, subpath, "--")
                             unlock(print_lock)
