@@ -261,13 +261,13 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
 
     idx = 0
     num_tests = length(tests)
-    node1_tests = []
     env = Dict{Int,Tuple{Int,String}}()
 
     n_passed = 0
     anynonpass = 0
     local t0 = time_ns()
     try
+        node1_tests = []
         @everywhere @eval(Main, using Jive)
         @sync begin
             for worker in workers()
@@ -301,14 +301,14 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                     end
                 end # @async begin
             end # for worker in workers()
-            for (idx, subpath) in node1_tests
-                filepath = normpath(dir, slash_to_path_separator(subpath))
-                (ts, buf) = runner(myid(), idx, num_tests, subpath, filepath)
-                print(io, String(take!(buf)))
-                n_passed += ts.n_passed
-                anynonpass += ts.anynonpass
-            end
         end # @sync begin
+        for (idx, subpath) in node1_tests
+            filepath = normpath(dir, slash_to_path_separator(subpath))
+            (ts, buf) = runner(myid(), idx, num_tests, subpath, filepath)
+            print(io, String(take!(buf)))
+            n_passed += ts.n_passed
+            anynonpass += ts.anynonpass
+        end
     catch err
         if err isa CompositeException
             worker = first(err.exceptions).ex.pid
