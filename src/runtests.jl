@@ -209,7 +209,7 @@ function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
             err isa InterruptException && rethrow()
             # something in the test block threw an error. Count that as an
             # error in this test set
-            record(ts, Error(:nontest_error, :(), err, catch_backtrace(), $(QuoteNode(source))))
+            record(ts, Error(:nontest_error, :(), err, stacktrace(catch_backtrace()), LineNumberNode(err.line, err.file)))
         finally
             copy!(GLOBAL_RNG, oldrng)
         end
