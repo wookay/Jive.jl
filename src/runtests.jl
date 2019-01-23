@@ -312,13 +312,17 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     catch err
         if err isa CompositeException
             worker = first(err.exceptions).ex.pid
-            (idx, subpath) = env[worker]
-            printstyled(io, "Retrying"; bold=true, color=:cyan)
-            printstyled(io, " ")
-            numbering = string(idx, /, num_tests)
-            jive_briefing(io, numbering, subpath, string(" (worker: ", myid(), ")"), "")
-            filepath = normpath(dir, slash_to_path_separator(subpath))
-            runner(myid(), idx, num_tests, subpath, filepath)
+            if haskey(env, worker)
+                (idx, subpath) = env[worker]
+                printstyled(io, "Retrying"; bold=true, color=:cyan)
+                printstyled(io, " ")
+                numbering = string(idx, /, num_tests)
+                jive_briefing(io, numbering, subpath, string(" (worker: ", myid(), ")"), "")
+                filepath = normpath(dir, slash_to_path_separator(subpath))
+                runner(myid(), idx, num_tests, subpath, filepath)
+            else
+                @info :distributed_run_catch err
+            end
         else
             @info :distributed_run_catch err
         end
