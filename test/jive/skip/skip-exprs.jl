@@ -38,7 +38,10 @@ end
 @skip a = 2
 @skip [1,2,3]
 
-@test Jive.Skipped.expressions == [:if, :quote, :block, :macro=>:m, :using, :return, :do, :struct=>:A, :struct=>:B, :hello, true, :pi, 42, nothing, :(=), :vect]
+@skip for i in 1:2
+end
+
+@test Jive.Skipped.expressions == [:if, :quote, :block, :macro=>:m, :using, :return, :do, :struct=>:A, :struct=>:B, :hello, true, :pi, 42, nothing, :(=), :vect, :for]
 @test !isdefined(@__MODULE__, :a)
 
 
