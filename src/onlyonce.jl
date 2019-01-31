@@ -1,7 +1,7 @@
 # module Jive
 
-onlyonce_evaluated = Set{LineNumberNode}()
-onlyonce_called = Set{String}()
+onlyonce_evaluated = Dict{String,UInt}()
+onlyonce_called = Dict{String,UInt}()
 
 """
     @onlyonce(block)
@@ -9,19 +9,21 @@ onlyonce_called = Set{String}()
 used to run the block only once.
 """
 macro onlyonce(block)
-    line = block.args[1]
-    if line in Jive.onlyonce_evaluated
-        nothing
-    else
-        push!(Jive.onlyonce_evaluated, line)
-        linestr = string(line.file, "#", line.line)
-        lineinexpr = Expr(:call, :in, linestr, :(Jive.onlyonce_called))
-        quot = Expr(:if, lineinexpr, nothing, quote
-            push!(Jive.onlyonce_called, $linestr)
+    node = block.args[1]
+    dir = pwd()
+    linestr = string(relpath(String(node.file), dir), "#", node.line)
+    h = hash(block)
+    haskey(onlyonce_evaluated, linestr) && h == onlyonce_evaluated[linestr] && return nothing
+    onlyonce_evaluated[linestr] = h
+    quot = quote
+        if haskey(Jive.onlyonce_called, $linestr) && $h == Jive.onlyonce_called[$linestr]
+            nothing
+        else
+            Jive.onlyonce_called[$linestr] = $h
             $block
-        end)
-        esc(quot)
+        end
     end
+    esc(quot)
 end
 
 # module Jive
