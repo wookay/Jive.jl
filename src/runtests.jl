@@ -31,7 +31,7 @@ function get_all_files(dir, skip, targets)
     for (root, dirs, files) in walkdir(dir)
         for filename in files
             !endswith(filename, ".jl") && continue
-            "runtests.jl" == filename && continue
+            root == dir && "runtests.jl" == filename && continue
             subpath = path_separator_to_slash(relpath(normpath(root, filename), dir))
             any(x -> startswith(subpath, x), path_separator_to_slash.(skip)) && continue
             !isempty(filters) && !any(x -> startswith(subpath, x), filters) && continue
@@ -86,10 +86,13 @@ function report(io::IO, t0, anynonpass, n_passed)
 end
 
 function jive_briefing(io::IO, numbering, subpath, msg, description)
-    printstyled(io, numbering, color=:underline)
-    print(io, ' ', subpath)
-    !isempty(msg) && print(io, ' ', msg)
-    println(io)
+    buf = IOBuffer()
+    context = IOContext(buf, :color => true)
+    printstyled(context, numbering, color=:underline)
+    print(context, ' ', subpath)
+    !isempty(msg) && print(context, ' ', msg)
+    println(context)
+    print(io, String(take!(buf)))
 end
 
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
@@ -101,9 +104,6 @@ using ..Jive: jive_briefing
 # print_counts
 function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
     passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-
-    print_lock = ReentrantLock()
-    lock(print_lock)
 
     nf = fails + c_fails
     if nf > 0
@@ -136,8 +136,6 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
         printstyled(io, np, color=:green)
         Base.Printf.@printf(io, "  (%.2f seconds)\n", elapsedtime)
     end
-
-    unlock(print_lock)
 end
 
 # finish
@@ -235,7 +233,7 @@ end # module Jive.CodeFromStdlibTest
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 module CodeFromJuliaTest
 
-using ..CodeFromStdlibTest: @jive_testset
+using ..CodeFromStdlibTest: @jive_testset, get_test_counts
 using ..Jive: slash_to_path_separator, report, jive_briefing
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
@@ -278,10 +276,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         env[worker] = (idx, subpath)
                         if idx < start_idx
                             numbering = string(idx, /, num_tests)
-                            print_lock = ReentrantLock()
-                            lock(print_lock)
                             jive_briefing(io, numbering, subpath, "--", "")
-                            unlock(print_lock)
                             continue
                         end
                         if any(x -> startswith(subpath, x), node1)
@@ -291,7 +286,8 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
                             (ts, buf) = fetch(f)
                             print(io, String(take!(buf)))
-                            n_passed += ts.n_passed
+                            passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
+                            n_passed += passes + c_passes
                             anynonpass += ts.anynonpass
                         end
                     end # while length(tests) > 0
@@ -302,29 +298,37 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 end # @async begin
             end # for worker in workers()
         end # @sync begin
+        worker = myid()
         for (idx, subpath) in node1_tests
             filepath = normpath(dir, slash_to_path_separator(subpath))
-            (ts, buf) = runner(myid(), idx, num_tests, subpath, filepath)
+            f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
+            (ts, buf) = fetch(f)
             print(io, String(take!(buf)))
-            n_passed += ts.n_passed
+            passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
+            n_passed += passes + c_passes
             anynonpass += ts.anynonpass
         end
     catch err
         if err isa CompositeException
-            worker = first(err.exceptions).ex.pid
-            if haskey(env, worker)
-                (idx, subpath) = env[worker]
-                printstyled(io, "Retrying"; bold=true, color=:cyan)
-                printstyled(io, " ")
-                numbering = string(idx, /, num_tests)
-                jive_briefing(io, numbering, subpath, string(" (worker: ", myid(), ")"), "")
-                filepath = normpath(dir, slash_to_path_separator(subpath))
-                runner(myid(), idx, num_tests, subpath, filepath)
-            else
-                @info :distributed_run_catch err
+            ex = first(err.exceptions).ex
+            if ex isa RemoteException
+                print(io, "⚠️  ")
+                showerror(io, ex)
+                println(io)
+                remote_worker = ex.pid
+                if haskey(env, remote_worker)
+                    worker = myid()
+                    (idx, subpath) = env[remote_worker]
+                    printstyled(io, "Retrying"; bold=true, color=:cyan)
+                    printstyled(io, " ")
+                    numbering = string(idx, /, num_tests)
+                    jive_briefing(io, numbering, subpath, string(" (worker: ", remote_worker => worker, ")"), "")
+                    filepath = normpath(dir, slash_to_path_separator(subpath))
+                    f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
+                    (ts, buf) = fetch(f)
+                    print(io, String(take!(buf)))
+                end
             end
-        else
-            @info :distributed_run_catch err
         end
     finally
         empty!(env)
@@ -337,7 +341,7 @@ end # module Jive.CodeFromJuliaTest
 
 
 using .CodeFromJuliaTest: distributed_run
-using .CodeFromStdlibTest: @jive_testset
+using .CodeFromStdlibTest: @jive_testset, get_test_counts
 
 function run(dir::String, tests::Vector{String}, start_idx::Int)
     io = stdout
@@ -356,7 +360,8 @@ function run(dir::String, tests::Vector{String}, start_idx::Int)
         ts = @jive_testset io numbering subpath "" "" begin
             Main.include(filepath)
         end
-        n_passed += ts.n_passed
+        passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
+        n_passed += passes + c_passes
         anynonpass += ts.anynonpass
     end
     report(io, t0, anynonpass, n_passed)
