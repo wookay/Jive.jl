@@ -24,7 +24,13 @@ function get_all_files(dir, skip, targets)
                     start_idx = parse(Int, val)
                 end
             else
-                push!(filters, arg)
+                subpath = path_separator_to_slash(arg)
+                if subpath == "."
+                elseif startswith(subpath, "./")
+                    push!(filters, subpath[3:end])
+                else
+                    push!(filters, subpath)
+                end
             end
         end
     end
