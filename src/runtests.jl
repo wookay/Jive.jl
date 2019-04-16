@@ -57,10 +57,10 @@ run the test files from the specific directory.
 * `node1`: run on node 1 during for the distributed tests.
 * `targets`: filter targets and start. default is `ARGS`
 """
-function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS)
+function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS, parallel=true)
     (all_tests, start_idx) = get_all_files(dir, skip, targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
-    if "0" == env_jive_procs
+    if ("0" == env_jive_procs) || !parallel
         run(dir, all_tests, start_idx)
     else
         num_procs = nprocs()
