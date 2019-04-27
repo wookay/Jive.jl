@@ -15,6 +15,9 @@ include("If.jl")
 export @useinside
 include("useinside.jl")
 
+export @__END__
+include("__END__.jl")
+
 export runtests
 include("runtests.jl")
 
