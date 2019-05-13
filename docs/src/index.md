@@ -3,7 +3,7 @@
 `Jive.jl` is a Julia package to help the writing tests.
 
   - [runtests](#runtests-1)
-  - [watch](#watch-1)
+  - [watch](#Watch-package-folders-1)
   - [@skip](#@skip-1)
   - [@onlyonce](#@onlyonce-1)
   - [@If](#@If-1)
@@ -66,9 +66,9 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L452).
 
 
-# watch
+# Watch package folders
 
-watch the folders. You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
+You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).  You must run with the interactive switch, or uncomment the `JLOptions()` line in the following script:
 
 ```sh
 ~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
@@ -83,6 +83,9 @@ watch(@__DIR__, sources=[pathof(Example)]) do path
     revise()
     runtests(@__DIR__, skip=["revise.jl"])
 end
+# Uncomment the next line if you do not run julia with the interactive switch:
+# Base.JLOptions().isinteractive==0 && wait()
+
 # Jive.stop(watch)
 
 ~/.julia/dev/Jive/test/Example/test $ julia --project=.. -q -i revise.jl example

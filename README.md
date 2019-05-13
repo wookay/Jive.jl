@@ -11,7 +11,7 @@
 
 
   - [runtests](#runtests)
-  - [watch](#watch)
+  - [watch](#watch-package-folders)
   - [@skip](#skip)
   - [@onlyonce](#onlyonce)
   - [@If](#If)
