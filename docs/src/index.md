@@ -2,13 +2,14 @@
 
 `Jive.jl` is a Julia package to help the writing tests.
 
-  - [runtests](#runtests)
-  - [watch](#watch)
-  - [@skip](#skip)
-  - [@onlyonce](#onlyonce)
-  - [@If](#If)
-  - [@useinside](#useinside)
-  - [@mockup](#mockup)
+  - [runtests](#runtests-1)
+  - [watch](#watch-1)
+  - [@skip](#@skip-1)
+  - [@onlyonce](#@onlyonce-1)
+  - [@If](#@If-1)
+  - [@useinside](#@useinside-1)
+  - [@mockup](#@mockup-1)
+  - [`@__END__`](#@__END__-1)
 
 
 # runtests
@@ -162,40 +163,14 @@ used to produce a replica from the other module.
 
 * [test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup)
 
+
+# `@__END__`
+
+`throw(Jive.EndError())`
+
+* [`test/jive/__END__`](https://github.com/wookay/Jive.jl/blob/master/test/jive/__END__)
+
 ```julia
-using Jive # Mock @mockup
-using Test
-
-module Goods
-struct Foo
-end
-function f(::Foo)
-    10
-end
-function g(::Foo)
-    10
-end
-end # module Goods
-
-
-@mockup module Goods
-function f(::Foo)
-    20
-end
-end # @mockup module Goods
-@test Goods.f(Goods.Foo()) == 10
-@test Mock.Goods.f(Mock.Goods.Foo()) == 20
-@test Mock.Goods.g(Mock.Goods.Foo()) == 10
-
-
-Goods3 = @mockup module Goods
-function g(::Foo)
-    30
-end
-end # @mockup module Goods
-@test Goods.f(Goods.Foo()) == 10
-@test Mock.Goods.f(Mock.Goods.Foo()) == 10
-@test Mock.Goods.g(Mock.Goods.Foo()) == 30
-@test Goods3 isa Module
-@test Goods3.g === Mock.Goods.g
+using Jive
+@__END__
 ```
