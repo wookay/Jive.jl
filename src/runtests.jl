@@ -213,7 +213,8 @@ function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
             err isa InterruptException && rethrow()
             # something in the test block threw an error. Count that as an
             # error in this test set
-            record(ts, Error(:nontest_error, :(), err, stacktrace(catch_backtrace()), LineNumberNode(err.line, err.file)))
+            backtrace = VERSION >= v"1.2.0-DEV.459" ? Base.catch_stack() : stacktrace(catch_backtrace())
+            record(ts, Error(:nontest_error, :(), err, backtrace, LineNumberNode(err.line, err.file)))
         finally
             copy!(GLOBAL_RNG, oldrng)
         end
@@ -315,6 +316,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             anynonpass += ts.anynonpass
         end
     catch err
+        anynonpass += 1
         if err isa CompositeException
             ex = first(err.exceptions).ex
             if ex isa RemoteException
@@ -331,13 +333,16 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                     jive_briefing(io, numbering, subpath, string(" (worker: ", remote_worker => worker, ")"), "")
                     filepath = normpath(dir, slash_to_path_separator(subpath))
                     f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
-                    (ts, buf) = fetch(f)
-                    print(io, String(take!(buf)))
+                    res = fetch(f)
+                    if res isa RemoteException
+                    else
+                        (ts, buf) = res
+                        print(io, String(take!(buf)))
+                    end
                 end
             end
         end
     finally
-        empty!(env)
         GC.gc()
     end
     report(io, t0, anynonpass, n_passed)

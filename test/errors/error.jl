@@ -4,7 +4,7 @@ using Test
 
 @testset "error testset" begin
 
-@test false
+@test true
 
 g() = must_be_an_error
 f() = g()
