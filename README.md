@@ -71,7 +71,7 @@ in the above example, test files are matched for only have `jive/s` `jive/m` and
 ~/.julia/dev/Jive $ julia --color=yes --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
 ```
 
-see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L452).
+see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L452) and [TestJive.jl](https://github.com/wookay/TestJive.jl).
 
 
 # Watch package folders
