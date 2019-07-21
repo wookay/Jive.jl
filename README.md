@@ -142,8 +142,11 @@ used to run the block only once.
 ```julia
 using Jive # @onlyonce
 
-@onlyonce begin
-    println(42)
+for _ in 1:10
+    @onlyonce begin
+        println(42)
+    end
+    @onlyonce(println("hello"))
 end
 ```
 
