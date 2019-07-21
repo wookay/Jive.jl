@@ -37,7 +37,7 @@ function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vec
         errmsg = fetch(errstream)
         if !isempty(errmsg)
             for line in split(errmsg, '\n')
-                !startswith(line, "WARNING: replacing module test") && print(stderr, line)
+                !startswith(line, "WARNING: replacing module test") && println(stderr, line)
             end
         end
     end
