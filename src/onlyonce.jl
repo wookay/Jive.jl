@@ -9,12 +9,16 @@ onlyonce_called = Dict{String,UInt}()
 used to run the block only once.
 """
 macro onlyonce(block)
-    node = block.args[1]
-    dir = pwd()
-    linestr = string(relpath(String(node.file), dir), "#", node.line)
     h = hash(block)
-    haskey(onlyonce_evaluated, linestr) && h == onlyonce_evaluated[linestr] && return nothing
-    onlyonce_evaluated[linestr] = h
+    if block.head === :block
+        node = block.args[1]
+        dir = pwd()
+        linestr = string(relpath(String(node.file), dir), "#", node.line)
+        haskey(onlyonce_evaluated, linestr) && h == onlyonce_evaluated[linestr] && return nothing
+        onlyonce_evaluated[linestr] = h
+    else
+        linestr = string(block)
+    end
     quot = quote
         if haskey(Jive.onlyonce_called, $linestr) && $h == Jive.onlyonce_called[$linestr]
             nothing

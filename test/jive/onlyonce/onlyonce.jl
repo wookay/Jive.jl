@@ -6,19 +6,19 @@ empty!(Jive.onlyonce_evaluated)
 empty!(Jive.onlyonce_called)
 
 
-include("heavy.jl")
+include(normpath(@__DIR__, "heavy.jl"))
 @test val == 0
 
-include("heavy.jl")
+include(normpath(@__DIR__, "heavy.jl"))
 @test val == 42
 
-include("heavy.jl")
+include(normpath(@__DIR__, "heavy.jl"))
 @test val == 42
 
 end # module test_jive_onlyonce_evaluated
 
 
-module test_jive_onlyonce_called
+module test_jive_onlyonce_called_block
 
 using Test
 using Jive
@@ -36,4 +36,23 @@ end # function f(x)
 @test f(1) == 1
 @test f(1) == 1
 
-end # module test_jive_onlyonce_called
+end # module test_jive_onlyonce_called_block
+
+
+module test_jive_onlyonce_called_call
+
+using Test
+using Jive
+empty!(Jive.onlyonce_evaluated)
+empty!(Jive.onlyonce_called)
+
+function f(x)
+    @onlyonce(x += 2)
+    x
+end # function f(x)
+
+@test f(1) == 3
+@test f(1) == 1
+@test f(1) == 1
+
+end # module test_jive_onlyonce_called_call

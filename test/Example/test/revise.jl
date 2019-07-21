@@ -1,9 +1,16 @@
+# julia -i -q --color=yes --project=.. revise.jl example
+
 using Revise, Jive
 using Example
-watch(@__DIR__, sources=[pathof(Example)]) do path
-    @info :changed path
+
+trigger = function (path)
+    printstyled("changed ", color=:cyan)
+    println(path)
     revise()
     runtests(@__DIR__, skip=["revise.jl"])
 end
-# Jive.stop(watch)
 
+watch(trigger, @__DIR__, sources=[pathof(Example)])
+trigger("")
+
+Base.JLOptions().isinteractive==0 && wait()
