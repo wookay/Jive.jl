@@ -26,7 +26,7 @@ run the test files from the specific directory.
 
 ```julia
 using Jive
-runtests(@__DIR__, skip=[], node1=[], targets=ARGS)
+runtests(@__DIR__)
 ```
 ![runtests.svg](https://wookay.github.io/docs/Jive.jl/assets/jive/runtests.svg)
 
@@ -84,7 +84,7 @@ using Jive
 runtests(@__DIR__, skip=["revise.jl"])
 
 ~/.julia/dev/Jive/test/Example/test $ cat revise.jl
-# julia -i -q --color=yes --project=.. revise.jl example
+# julia -i -q --color=yes --project revise.jl example
 
 using Revise, Jive
 using Example
@@ -101,10 +101,14 @@ trigger("")
 
 Base.JLOptions().isinteractive==0 && wait()
 
-~/.julia/dev/Jive/test/Example/test $ julia -i -q --color=yes --project=.. revise.jl example
+~/.julia/dev/Jive/test/Example/test $ julia -i -q --color=yes --project revise.jl example
 watching folders ...
   - ../src
   - example
+changed
+1/1 example/test1.jl
+    Pass 1  (0.27 seconds)
+✅  All 1 test has been completed.  (0.55 seconds)
 ```
 
 when saving any files in the watching folders, it automatically run tests.
