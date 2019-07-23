@@ -104,8 +104,14 @@ end
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
 module CodeFromStdlibTest
 
-using Test: GLOBAL_RNG, TESTSET_PRINT_ENABLE, DefaultTestSet, Error, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, get_test_counts, filter_errors
+using Test: TESTSET_PRINT_ENABLE, DefaultTestSet, Error, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, get_test_counts, filter_errors
 using ..Jive: jive_briefing
+
+if VERSION >= v"1.3.0-DEV.565"
+    default_rng = Random.default_rng
+else
+    default_rng = () -> Random.GLOBAL_RNG
+end
 
 # print_counts
 function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
@@ -204,10 +210,11 @@ function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
         # we reproduce the logic of guardseed, but this function
         # cannot be used as it changes slightly the semantic of @testset,
         # by wrapping the body in a function
-        oldrng = copy(GLOBAL_RNG)
+        local RNG = default_rng()
+        oldrng = copy(RNG)
         elapsedtime = @elapsed try
-            # GLOBAL_RNG is re-seeded with its own seed to ease reproduce a failed test
-            Random.seed!(GLOBAL_RNG.seed)
+            # RNG is re-seeded with its own seed to ease reproduce a failed test
+            Random.seed!(RNG.seed)
             $(esc(tests))
         catch err
             err isa InterruptException && rethrow()
@@ -216,7 +223,7 @@ function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
             backtrace = VERSION >= v"1.2.0-DEV.459" ? Base.catch_stack() : stacktrace(catch_backtrace())
             record(ts, Error(:nontest_error, :(), err, backtrace, LineNumberNode(err.line, err.file)))
         finally
-            copy!(GLOBAL_RNG, oldrng)
+            copy!(RNG, oldrng)
         end
         pop_testset()
         jive_finish($(esc(io)), ts, elapsedtime) # finish(ts)
