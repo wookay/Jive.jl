@@ -33,9 +33,9 @@ matrix:
 
 
 script:
-  -                 julia --color=yes --project=.        -e 'using Pkg; pkg"resolve"; pkg"precompile"; Pkg.test()'
-  - JIVE_PROCS=auto julia --color=yes --project=.        -e 'using Pkg; Pkg.test()'
-  - JIVE_PROCS=0    julia --color=yes --project=. -pauto -e 'using Pkg; Pkg.test()'
+  -                 julia --color=yes --project        -e 'using Pkg; pkg"resolve"; pkg"precompile"; Pkg.test()'
+  - JIVE_PROCS=auto julia --color=yes --project        -e 'using Pkg; Pkg.test()'
+  - JIVE_PROCS=0    julia --color=yes --project -pauto -e 'using Pkg; Pkg.test()'
   - cd test
   - julia --color=yes        runtests.jl jive
   - julia --color=yes        runtests.jl jive/s jive/m start=2
@@ -43,11 +43,11 @@ script:
   - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s"], node1=["jive/m"])'
   - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl"], targets=["errors", "jive"], node1=["jive/m"])' || true
 
-  - cd Example
-  - julia --color=yes --project=. -e 'using Pkg; Pkg.test()' example
+  - cd Example/test
+  - julia --color=yes -e 'push!(Base.LOAD_PATH, "../../.."); push!(Base.LOAD_PATH, ".."); include("runtests.jl")' example
 
 after_success:
-  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.1 ]] ; then julia --project=. -e 'using Pkg;
-                                                                                                       Pkg.add("Coverage");
-                                                                                                       using Coverage;
-                                                                                                       Codecov.submit(process_folder())' ; fi
+  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.1 ]] ; then julia --project -e 'using Pkg;
+                                                                                                     Pkg.add("Coverage");
+                                                                                                     using Coverage;
+                                                                                                     Codecov.submit(process_folder())' ; fi
