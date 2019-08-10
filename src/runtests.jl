@@ -48,7 +48,7 @@ function get_all_files(dir, skip, targets)
 end
 
 """
-    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS)
+    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS, enable_distributed::Bool=true)
 
 run the test files from the specific directory.
 
@@ -56,11 +56,12 @@ run the test files from the specific directory.
 * `skip`: files or directories to skip.
 * `node1`: run on node 1 during for the distributed tests.
 * `targets`: filter targets and start. default is `ARGS`
+* `enable_distributed`: option for distributed
 """
-function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS, parallel=true)
+function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1::Union{Vector{Any},Vector{String}}=[], targets=ARGS, enable_distributed::Bool=true)
     (all_tests, start_idx) = get_all_files(dir, skip, targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
-    if ("0" == env_jive_procs) || !parallel
+    if ("0" == env_jive_procs) || !enable_distributed
         run(dir, all_tests, start_idx)
     else
         num_procs = nprocs()
