@@ -326,12 +326,19 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     catch err
         anynonpass += 1
         if err isa CompositeException
-            ex = first(err.exceptions).ex
-            if ex isa RemoteException
+            exception = first(err.exceptions)
+            if exception isa CapturedException
+                result = exception.ex
+            elseif Symbol(typeof(exception)) === :TaskFailedException  # VERSION >= v"1.3.0-alpha.110"
+                result = exception.task.result
+            else
+                result = nothing
+            end
+            if result isa RemoteException
                 print(io, "⚠️  ")
-                showerror(io, ex)
+                showerror(io, result)
                 println(io)
-                remote_worker = ex.pid
+                remote_worker = result.pid
                 if haskey(env, remote_worker)
                     worker = myid()
                     (idx, subpath) = env[remote_worker]
@@ -348,7 +355,15 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         print(io, String(take!(buf)))
                     end
                 end
+            else
+                print(io, "⚠️  ")
+                showerror(io, exception)
+                println(io)
             end
+        else
+            print(io, "⚠️  ")
+            showerror(io, err)
+            println(io)
         end
     finally
         GC.gc()
