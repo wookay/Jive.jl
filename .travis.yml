@@ -10,7 +10,7 @@ os:
   - windows
 
 julia:
-  - 1.1
+  - 1.2
   - 1.3
 
 matrix:
@@ -19,7 +19,7 @@ matrix:
       julia: nightly
 
 script:
-  -                 julia --color=yes --project        -e 'using Pkg; pkg"resolve"; pkg"precompile"; Pkg.test()'
+  -                 julia --color=yes --project        -e 'using Pkg; pkg"resolve"; pkg"precompile"; Pkg.test(coverage=true)'
   - JIVE_PROCS=auto julia --color=yes --project        -e 'using Pkg; Pkg.test()'
   - JIVE_PROCS=0    julia --color=yes --project -pauto -e 'using Pkg; Pkg.test()'
   - cd test
@@ -33,7 +33,7 @@ script:
   - julia --color=yes -e 'push!(Base.LOAD_PATH, "../../.."); push!(Base.LOAD_PATH, ".."); include("runtests.jl")' example
 
 after_success:
-  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.1 ]] ; then julia --project -e 'using Pkg;
+  - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.2 ]] ; then julia --project -e 'using Pkg;
                                                                                                      Pkg.add("Coverage");
                                                                                                      using Coverage;
                                                                                                      Codecov.submit(process_folder())' ; fi
