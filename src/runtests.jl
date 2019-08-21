@@ -80,8 +80,22 @@ function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=[], node1
     end
 end
 
+struct FinishedWithErrors <: Exception
+end
+
+function Base.showerror(io::IO, ex::FinishedWithErrors, bt; backtrace=true)
+    printstyled(io, "Test run finished with errors", color=:red)
+end
+
 function report(io::IO, t0, anynonpass, n_passed)
-    if iszero(anynonpass) && n_passed > 0
+    if anynonpass > 0
+        printstyled(io, "❗️  ", color=:red)
+        print(io, "Test run finished with ")
+        print(io, anynonpass, " ")
+        print(io, anynonpass == 1 ? "error" : "errors", ".")
+        Base.Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
+        throw(FinishedWithErrors())
+    elseif n_passed > 0
         printstyled(io, "✅  ", color=:green)
         print(io, "All ")
         printstyled(io, n_passed, color=:green)
