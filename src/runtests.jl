@@ -1,6 +1,7 @@
 # module Jive
 
 using Distributed # nprocs addprocs rmprocs
+using Printf
 
 function slash_to_path_separator(subpath::String)
     sep = Base.Filesystem.path_separator
@@ -93,7 +94,7 @@ function report(io::IO, t0, anynonpass, n_passed)
         print(io, "Test run finished with ")
         print(io, anynonpass, " ")
         print(io, anynonpass == 1 ? "error" : "errors", ".")
-        Base.Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
+        Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
         throw(FinishedWithErrors())
     elseif n_passed > 0
         printstyled(io, "✅  ", color=:green)
@@ -102,7 +103,7 @@ function report(io::IO, t0, anynonpass, n_passed)
         print(io, " ")
         print(io, n_passed == 1 ? "test has" : "tests have")
         print(io, " been completed.")
-        Base.Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
+        Printf.@printf(io, "  (%.2f seconds)\n", (time_ns()-t0)/1e9)
     end
 end
 
@@ -121,6 +122,7 @@ module CodeFromStdlibTest
 
 using Test: TESTSET_PRINT_ENABLE, DefaultTestSet, Error, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, get_test_counts, filter_errors
 using ..Jive: jive_briefing
+using Printf
 
 if VERSION >= v"1.3.0-DEV.565"
     default_rng = Random.default_rng
@@ -161,7 +163,7 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, elapsedtime)
         print(io, repeat(' ', 4))
         printstyled(io, "Pass", " "; bold=true, color=:green)
         printstyled(io, np, color=:green)
-        Base.Printf.@printf(io, "  (%.2f seconds)\n", elapsedtime)
+        Printf.@printf(io, "  (%.2f seconds)\n", elapsedtime)
     end
 end
 
