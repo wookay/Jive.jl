@@ -354,6 +354,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 print(io, "⚠️  ")
                 showerror(io, result)
                 println(io)
+                println.(Ref(io), result.captured.ex.errors_and_fails)
                 remote_worker = result.pid
                 if haskey(env, remote_worker)
                     worker = myid()
