@@ -341,6 +341,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
         end
     catch err
         anynonpass += 1
+        print(io, "⚠️  ")
         if err isa CompositeException
             exception = first(err.exceptions)
             if exception isa CapturedException
@@ -351,34 +352,19 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 result = nothing
             end
             if result isa RemoteException
-                print(io, "⚠️  ")
-                showerror(io, result)
-                println(io)
-                println.(Ref(io), result.captured.ex.errors_and_fails)
                 remote_worker = result.pid
                 if haskey(env, remote_worker)
-                    worker = myid()
                     (idx, subpath) = env[remote_worker]
-                    printstyled(io, "Retrying"; bold=true, color=:cyan)
-                    printstyled(io, " ")
                     numbering = string(idx, /, num_tests)
-                    jive_briefing(io, numbering, subpath, string(" (worker: ", remote_worker => worker, ")"), "")
-                    filepath = normpath(dir, slash_to_path_separator(subpath))
-                    f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath)
-                    res = fetch(f)
-                    if res isa RemoteException
-                    else
-                        (ts, buf) = res
-                        print(io, String(take!(buf)))
-                    end
+                    jive_briefing(io, numbering, subpath, " (worker: $remote_worker)", "")
                 end
+                print(io, ": ")
+                println.(Ref(io), result.captured.ex.errors_and_fails)
             else
-                print(io, "⚠️  ")
                 showerror(io, exception)
                 println(io)
             end
         else
-            print(io, "⚠️  ")
             showerror(io, err)
             println(io)
         end
