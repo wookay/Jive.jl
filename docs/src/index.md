@@ -1,4 +1,6 @@
-# Jive 👣
+# Jive.jl 👣
+
+<https://github.com/wookay/Jive.jl>
 
 `Jive.jl` is a Julia package to help the writing tests.
 
