@@ -22,7 +22,7 @@
 
 # runtests
 
-run the test files from the specific directory.
+run the test files in a specific directory and path.
 
 ```julia
 using Jive
