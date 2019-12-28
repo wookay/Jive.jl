@@ -4,11 +4,12 @@ keywords = ["distributed", "test"]
 license = "MIT"
 desc = "some useful steps in tests"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
-version = "0.2.2"
+version = "0.2.3-DEV"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 

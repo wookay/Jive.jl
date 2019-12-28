@@ -30,8 +30,13 @@ script:
   - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s"], node1=["jive/m"])'
   - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl"], targets=["errors", "jive"], node1=["jive/m"])' || true
 
-  - cd Example/test
-  - julia --color=yes -e 'push!(Base.LOAD_PATH, "../../.."); push!(Base.LOAD_PATH, ".."); include("runtests.jl")' example
+  - cd
+  - julia --color=yes -e 'using Pkg; pkg"add Jive"'
+  - cd -
+  - julia --color=yes -e 'using Pkg; pkg"dev Example"'
+  - cd Example
+  - julia --color=yes     --project=. test/runtests.jl example
+  - julia --color=yes -p2 --project=. test/runtests.jl example
 
 after_success:
   - if [[ "$TRAVIS_OS_NAME" == linux && "$TRAVIS_JULIA_VERSION" == 1.2 ]] ; then julia --project -e 'using Pkg;
