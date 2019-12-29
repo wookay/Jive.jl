@@ -297,11 +297,13 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     local t0 = time_ns()
     try
         node1_tests = []
-        project = Base.JLOptions().project
-        if project != C_NULL
-            prj = unsafe_string(project)
-            @everywhere @eval(Main, using Pkg)
-            @everywhere @eval(Main, Pkg.activate($prj))
+        if isfile(normpath(dir, "Project.toml"))
+            project = Base.JLOptions().project
+            if project != C_NULL
+                prj = unsafe_string(project)
+                @everywhere @eval(Main, using Pkg)
+                @everywhere @eval(Main, Pkg.activate($prj))
+            end
         end
         @everywhere @eval(Main, using Jive)
         @sync begin
