@@ -301,6 +301,9 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             project = Base.JLOptions().project
             if project != C_NULL
                 prj = unsafe_string(project)
+                if prj == "@."
+                    prj = ""
+                end
                 @everywhere @eval(Main, using Pkg)
                 @everywhere @eval(Main, Pkg.activate($prj))
             end
