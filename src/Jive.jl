@@ -18,6 +18,9 @@ include("useinside.jl")
 export @__END__
 include("__END__.jl")
 
+export @__REPL__
+include("__REPL__.jl")
+
 export runtests
 include("runtests.jl")
 

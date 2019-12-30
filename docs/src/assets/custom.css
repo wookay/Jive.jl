@@ -6,6 +6,14 @@ html.theme--documenter-dark article code {
     color: #00cbf4;
 }
 
+html.theme--documenter-dark li.is-active code {
+    color: #00cbf4;
+}
+
+html.theme--documenter-dark a code {
+    color: #00cbf4;
+}
+
 html.theme--documenter-dark .tocitem code {
     color: #eeeeee;
 }

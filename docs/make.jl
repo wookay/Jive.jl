@@ -21,5 +21,6 @@ makedocs(
         "@useinside" => "useinside.md",
         "@mockup" => "mockup.md",
         "`@__END__`" => "END.md",
+        "`@__REPL__`" => "REPL.md",
     ],
 )
