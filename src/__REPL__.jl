@@ -26,9 +26,9 @@ macro __REPL__()
         end
     end
     quote
-        if Base.JLOptions().isinteractive == 1
+        if Base.JLOptions().isinteractive == 1 || isdefined(Base, :active_repl)
             throw(REPLError())
-        elseif !isdefined(Base, :active_repl)
+        else
             interactiveinput = isa(stdin, Base.TTY)
             quiet = true
             banner = false

@@ -16,8 +16,8 @@
   - [@onlyonce](#onlyonce)
   - [@If](#If)
   - [@useinside](#useinside)
-  - [@mockup](#mockup)
   - [`@__END__`](#__end__)
+  - [`@__REPL__`](#__repl__)
 
 
 # runtests
@@ -33,19 +33,17 @@ runtests(@__DIR__)
 for the `runtests.jl`, `ARGS` are used to filter the targets and to set the start offset of the tests.
 
 ```
-~/.julia/dev/Jive/test $ julia --color=yes runtests.jl jive/s jive/m start=3
-1/5 jive/mockup/mockup.jl --
-2/5 jive/skip/skip-calls.jl --
-3/5 jive/skip/skip-exprs.jl
-    Pass 4  (0.38 seconds)
-4/5 jive/skip/skip-functions.jl
-    Pass 4  (0.05 seconds)
-5/5 jive/skip/skip-modules.jl
+~/.julia/dev/Jive/test $ julia --color=yes runtests.jl jive/s start=3
+1/4 jive/skip/skip-calls.jl --
+2/4 jive/skip/skip-exprs.jl --
+3/4 jive/skip/skip-functions.jl
+    Pass 4  (0.37 seconds)
+4/4 jive/skip/skip-modules.jl
     Pass 4  (0.01 seconds)
-✅  All 12 tests have been completed.  (0.73 seconds)
+✅   All 8 tests have been completed.  (0.65 seconds)
 ```
 
-in the above example, test files are matched for only have `jive/s` `jive/m` and jumping up to the 3rd file.
+in the above example, test files are matched for only have `jive/s` and jumping up to the 3rd file.
 
 ### Examples
 
@@ -180,13 +178,6 @@ end
 ```
 
 
-# @mockup
-
-used to produce a replica from the other module.
-
-* [test/jive/mockup](https://github.com/wookay/Jive.jl/blob/master/test/jive/mockup)
-
-
 # `@__END__`
 
 `throw(Jive.EndError())`
@@ -196,6 +187,29 @@ used to produce a replica from the other module.
 ```julia
 using Jive
 @__END__
+```
+
+
+# `@__REPL__`
+
+* [`test/jive/__REPL__`](https://github.com/wookay/Jive.jl/blob/master/test/jive/__REPL__)
+
+```
+~/.julia/dev/Jive/test/jive/__REPL__ $ cat test.jl
+using Jive
+
+a = 1
+
+@__REPL__
+
+@info :a a
+~/.julia/dev/Jive/test/jive/__REPL__ $ julia test.jl
+julia> a += 2
+3
+
+julia> ^D  # Ctrl + D to exit the REPL
+┌ Info: a
+└   a = 3
 ```
 
 
