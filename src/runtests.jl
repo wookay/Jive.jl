@@ -238,7 +238,8 @@ function jive_testset_beginend(io, numbering, subpath, msg, args, tests, source)
             # something in the test block threw an error. Count that as an
             # error in this test set
             backtrace = VERSION >= v"1.2.0-DEV.459" ? Base.catch_stack() : stacktrace(catch_backtrace())
-            record(ts, Error(:nontest_error, :(), err, backtrace, LineNumberNode(err.line, err.file)))
+            linenumber = VERSION >= v"1.5.0-DEV.283" ? LineNumberNode(err.line, Symbol(err.file)) : LineNumberNode(err.line, err.file)
+            record(ts, Error(:nontest_error, :(), err, backtrace, linenumber))
         finally
             copy!(RNG, oldrng)
         end
