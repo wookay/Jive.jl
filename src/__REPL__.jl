@@ -33,7 +33,7 @@ macro __REPL__()
             quiet = true
             banner = false
             history_file = true
-            color_set = true
+            color_set = false
             Base.run_main_repl(interactiveinput, quiet, banner, history_file, color_set)
         end
     end
