@@ -27,8 +27,8 @@ script:
   - julia --color=yes        runtests.jl jive
   - julia --color=yes        runtests.jl jive/s jive/m start=2
   - julia --color=yes -pauto runtests.jl jive/s jive/m start=2
-  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s"], node1=["jive/m"])'
-  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl"], targets=["errors", "jive"], node1=["jive/m"])' || true
+  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s", "jive/__REPL__"], node1=["jive/m"])'
+  - julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], node1=["jive/m"])' || true
 
   - cd ../..
   - julia --color=yes -e 'using Pkg; pkg"dev Jive.jl"'
