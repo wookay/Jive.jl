@@ -1,5 +1,7 @@
 # module Jive
 
+import REPL
+
 struct REPLError <: Exception
 end
 
@@ -29,12 +31,9 @@ macro __REPL__()
         if Base.JLOptions().isinteractive == 1 || isdefined(Base, :active_repl)
             throw(REPLError())
         else
-            interactiveinput = isa(stdin, Base.TTY)
-            quiet = true
-            banner = false
-            history_file = true
-            color_set = false
-            Base.run_main_repl(interactiveinput, quiet, banner, history_file, color_set)
+            term = REPL.Terminals.TTYTerminal("dumb", stdin, stdout, stderr)
+            repl = REPL.LineEditREPL(term, true)
+            REPL.run_repl(repl)
         end
     end
 end
