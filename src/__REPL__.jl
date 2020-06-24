@@ -33,6 +33,7 @@ macro __REPL__()
         else
             term = REPL.Terminals.TTYTerminal("dumb", stdin, stdout, stderr)
             repl = REPL.LineEditREPL(term, true)
+            repl.history_file = true
             REPL.run_repl(repl)
         end
     end
