@@ -63,7 +63,8 @@ function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vec
     end
 
     printstyled("watching folders ...\n", color=:green)
-    for (folder, (fm, loop)) in sort(watched_folders)
+    for folder in (sort ∘ collect ∘ keys)(watched_folders)
+        (fm, loop) = watched_folders[folder]
         println("  - ", relpath(folder, dir))
     end
 end
