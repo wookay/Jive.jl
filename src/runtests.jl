@@ -17,6 +17,9 @@ function get_all_files(dir, skip, targets)
     all_files = Vector{String}()
     filters = []
     start_idx = 1
+    walkdir_list = walkdir(dir)
+    (root, dirs, files) = first(walkdir_list)
+    dir_and_files = vcat(dirs, files)
     if !isempty(targets)
         for arg in targets
             if occursin('=', arg)
@@ -29,13 +32,13 @@ function get_all_files(dir, skip, targets)
                 if subpath == "."
                 elseif startswith(subpath, "./")
                     push!(filters, subpath[3:end])
-                else
+                elseif any(x -> startswith(subpath, x), dir_and_files)
                     push!(filters, subpath)
                 end
             end
         end
     end
-    for (root, dirs, files) in walkdir(dir)
+    for (root, dirs, files) in walkdir_list
         for filename in files
             !endswith(filename, ".jl") && continue
             root == dir && "runtests.jl" == filename && continue
