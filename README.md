@@ -82,7 +82,7 @@ using Jive
 runtests(@__DIR__, skip=["revise.jl"])
 
 ~/.julia/dev/Jive/test/Example/test $ cat revise.jl
-# julia -i -q --color=yes --project revise.jl example
+# julia -i -q --color=yes --project=.. revise.jl example
 
 using Revise, Jive
 using Example
@@ -99,7 +99,7 @@ trigger("")
 
 Base.JLOptions().isinteractive==0 && wait()
 
-~/.julia/dev/Jive/test/Example/test $ julia -i -q --color=yes --project revise.jl example
+~/.julia/dev/Jive/test/Example/test $ julia -i -q --color=yes --project=.. revise.jl example
 watching folders ...
   - ../src
   - example
