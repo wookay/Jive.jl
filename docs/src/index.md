@@ -21,6 +21,9 @@
 
 run the test files in a specific directory and path.
 
+suppose you have some test files in the `test/` directory for your package.
+now let's make your `test/runtests.jl` with
+
 ```julia
 using Jive
 runtests(@__DIR__)
@@ -37,7 +40,7 @@ for the `runtests.jl`, `ARGS` are used to filter the targets and to set the star
     Pass 4  (0.37 seconds)
 4/4 jive/skip/skip-modules.jl
     Pass 4  (0.01 seconds)
-✅  All 8 tests have been completed.  (0.65 seconds)
+✅   All 8 tests have been completed.  (0.65 seconds)
 ```
 
 in the above example, test files are matched for only have `jive/s` and jumping up to the 3rd file.
@@ -66,7 +69,16 @@ in the above example, test files are matched for only have `jive/s` and jumping 
 ~/.julia/dev/Jive $ julia --color=yes --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
 ```
 
-see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L452) and [TestJive.jl](https://github.com/wookay/TestJive.jl).
+[TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
+look at also the `Project.toml` file for your own package.
+```toml
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
+
+[targets]
+test = ["Test", "Jive"]
+```
 
 
 # Watch package folders

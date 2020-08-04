@@ -1,8 +1,8 @@
 # Jive.jl 👣
 
-|  **Documentation**                        |  **Build Status**                                                |
-|:-----------------------------------------:|:----------------------------------------------------------------:|
-|  [![][docs-latest-img]][docs-latest-url]  |  [![][travis-img]][travis-url]  [![][codecov-img]][codecov-url]  |
+|  **Documentation**                        |  **Build Status**                                                                                 |
+|:-----------------------------------------:|:-------------------------------------------------------------------------------------------------:|
+|  [![][docs-latest-img]][docs-latest-url]  |  [![][travis-img]][travis-url]  [![][actions-img]][actions-url]  [![][codecov-img]][codecov-url]  |
 
 
 `Jive.jl` is a Julia package to help the writing tests.
@@ -23,6 +23,9 @@
 # runtests
 
 run the test files in a specific directory and path.
+
+suppose you have some test files in the `test/` directory for your package.
+now let's make your `test/runtests.jl` with
 
 ```julia
 using Jive
@@ -69,7 +72,16 @@ in the above example, test files are matched for only have `jive/s` and jumping 
 ~/.julia/dev/Jive $ julia --color=yes --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
 ```
 
-see also [travis job logs](https://travis-ci.org/wookay/Jive.jl/jobs/483203342#L452) and [TestJive.jl](https://github.com/wookay/TestJive.jl).
+[TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
+look at also the `Project.toml` file for your own package.
+```toml
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
+
+[targets]
+test = ["Test", "Jive"]
+```
 
 
 # Watch package folders
@@ -218,6 +230,9 @@ julia> ^D  # Ctrl + D to exit the REPL
 
 [travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/wookay/Jive.jl
+
+[actions-img]: https://github.com/wookay/Jive.jl/workflows/CI/badge.svg
+[actions-url]: https://github.com/wookay/Jive.jl/actions
 
 [codecov-img]: https://codecov.io/gh/wookay/Jive.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/wookay/Jive.jl/branch/master
