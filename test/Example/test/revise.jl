@@ -1,4 +1,4 @@
-# julia -i -q --color=yes --project revise.jl example
+# julia -i -q --color=yes --project=.. revise.jl example
 
 using Revise, Jive
 using Example
