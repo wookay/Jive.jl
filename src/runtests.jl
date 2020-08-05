@@ -1,5 +1,7 @@
 # module Jive
 
+# some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
+
 using Distributed # nprocs addprocs rmprocs
 using Printf
 
