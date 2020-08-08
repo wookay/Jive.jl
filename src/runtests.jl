@@ -16,7 +16,6 @@ function path_separator_to_slash(subpath::String)
 end
 
 function get_all_files(dir, skip, targets)
-    all_files = Vector{String}()
     filters = []
     start_idx = 1
     if !isempty(targets)
@@ -42,6 +41,7 @@ function get_all_files(dir, skip, targets)
             end
         end
     end
+    all_files = Vector{String}()
     for (root, dirs, files) in walkdir(dir)
         for filename in files
             !endswith(filename, ".jl") && continue
