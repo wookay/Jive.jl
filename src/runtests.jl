@@ -19,28 +19,30 @@ function get_all_files(dir, skip, targets)
     all_files = Vector{String}()
     filters = []
     start_idx = 1
-    walkdir_list = walkdir(dir)
-    (root, dirs, files) = first(walkdir_list)
-    dir_and_files = vcat(dirs, files)
     if !isempty(targets)
-        for arg in targets
-            if occursin('=', arg)
-                name, val = split(arg, '=')
-                if name == "start"
-                    start_idx = parse(Int, val)
-                end
-            else
-                subpath = path_separator_to_slash(arg)
-                if subpath == "."
-                elseif startswith(subpath, "./")
-                    push!(filters, subpath[3:end])
-                elseif any(x -> startswith(subpath, x), dir_and_files)
-                    push!(filters, subpath)
+        let
+            walkdir_list = walkdir(dir)
+            (root, dirs, files) = first(walkdir_list)
+            dir_and_files = vcat(dirs, files)
+            for arg in targets
+                if occursin('=', arg)
+                    name, val = split(arg, '=')
+                    if name == "start"
+                        start_idx = parse(Int, val)
+                    end
+                else
+                    subpath = path_separator_to_slash(arg)
+                    if subpath == "."
+                    elseif startswith(subpath, "./")
+                        push!(filters, subpath[3:end])
+                    elseif any(x -> startswith(subpath, x), dir_and_files)
+                        push!(filters, subpath)
+                    end
                 end
             end
         end
     end
-    for (root, dirs, files) in walkdir_list
+    for (root, dirs, files) in walkdir(dir)
         for filename in files
             !endswith(filename, ".jl") && continue
             root == dir && "runtests.jl" == filename && continue
