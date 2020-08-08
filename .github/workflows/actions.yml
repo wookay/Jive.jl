@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.1.0, 1.5.0]
+        julia-version: [1.5.0]
         julia-arch: [x64]
         os: [ubuntu-latest]
     steps:
@@ -17,4 +17,7 @@ jobs:
           version: ${{ matrix.julia-version }}
       - name: runtests
         run: |
+             export TERM='xterm-256color'
+             echo $(tput setaf 214)256 $(tput setaf 202)colors
+
              julia --color=yes --project=. -e 'using Pkg; pkg"test"'
