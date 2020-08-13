@@ -6,7 +6,12 @@ module TestTools
 export @testset
 
 import Test: @testset
-using Test: AbstractTestSet, DefaultTestSet, Error, Random, testset_forloop, testset_beginend, get_testset_depth, default_rng, get_testset, push_testset, pop_testset, finish, record, _check_testset
+using Test: AbstractTestSet, DefaultTestSet, Error, Random, testset_forloop, testset_beginend, get_testset_depth, get_testset, push_testset, pop_testset, finish, record, _check_testset
+if VERSION >= v"1.3.0-DEV.565"
+    default_rng = Random.default_rng
+else
+    GLOBAL_RNG = Random.GLOBAL_RNG
+end
 
 skip_testsets = []
 
