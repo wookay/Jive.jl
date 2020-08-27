@@ -287,8 +287,10 @@ function runner(worker, idx, num_tests, subpath, filepath)
     (ts, buf)
 end
 
+@generated have_color() = :(2 != Base.JLOptions().color)
+
 function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String})
-    io = stdout
+    io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "Sys.CPU_THREADS", color=:cyan)
     printstyled(io, ": ", Sys.CPU_THREADS)
     printstyled(io, ", ")
@@ -396,11 +398,11 @@ end
 end # module Jive.CodeFromJuliaTest
 
 
-using .CodeFromJuliaTest: distributed_run
+using .CodeFromJuliaTest: distributed_run, have_color
 using .CodeFromStdlibTest: @jive_testset, get_test_counts
 
 function run(dir::String, tests::Vector{String}, start_idx::Int)
-    io = stdout
+    io = IOContext(Core.stdout, :color => have_color())
     n_passed = 0
     anynonpass = 0
     local t0 = time_ns()
