@@ -1,8 +1,8 @@
 # Jive.jl 👣
 
-|  **Documentation**                        |  **Build Status**                                                                                 |
-|:-----------------------------------------:|:-------------------------------------------------------------------------------------------------:|
-|  [![][docs-latest-img]][docs-latest-url]  |  [![][travis-img]][travis-url]  [![][actions-img]][actions-url]  [![][codecov-img]][codecov-url]  |
+|  **Documentation**                        |  **Build Status**                                                  |
+|:-----------------------------------------:|:------------------------------------------------------------------:|
+|  [![][docs-latest-img]][docs-latest-url]  |  [![][actions-img]][actions-url]  [![][codecov-img]][codecov-url]  |
 
 
 `Jive.jl` is a Julia package to help the writing tests.
@@ -227,9 +227,6 @@ julia> ^D  # Ctrl + D to exit the REPL
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [docs-latest-url]: https://wookay.github.io/docs/Jive.jl/
-
-[travis-img]: https://api.travis-ci.org/wookay/Jive.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/wookay/Jive.jl
 
 [actions-img]: https://github.com/wookay/Jive.jl/workflows/CI/badge.svg
 [actions-url]: https://github.com/wookay/Jive.jl/actions

@@ -3,21 +3,69 @@ name: CI
 on: [pull_request, push]
 
 jobs:
-  build:
+  Test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.5.0]
+        julia-version: [1.5.2]
         julia-arch: [x64]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - julia-version: nightly
+            os: ubuntu-latest
+          - julia-version: 1.3.0
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@master
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
+      - name: runtests - basic
+        run: |
+             true
+                             julia --project=.         -e 'using Pkg; Pkg.test()'
+             JIVE_PROCS=auto julia --project=.         -e 'using Pkg; Pkg.test()'
+             JIVE_PROCS=0    julia --project=.  -pauto -e 'using Pkg; Pkg.test()'
+
+             cd test
+                             julia --project=..        runtests.jl jive
+                             julia --project=..        runtests.jl jive/s jive/m start=2
+             cd ..
+
+      - name: runtests - dev .
+        run: |
+             julia -e 'using Pkg; pkg"dev ."'
+             cd test
+                             julia              -pauto runtests.jl jive/s jive/m start=2
+                             julia              -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s", "jive/__REPL__"], node1=["jive/m"])'
+                             julia              -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], node1=["jive/m"])' || true
+             cd ..
+
+      - name: runtests - test/Example
+        run: |
+             julia -e 'using Pkg; pkg"dev test/Example"'
+             cd test/Example
+             julia -p2 --project=. test/runtests.jl example
+             cd ../..
+
+  TestOnWindows:
+    needs: Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: julia-actions/setup-julia@latest
       - name: runtests
         run: |
-             export TERM='xterm-256color'
-             echo $(tput setaf 214)256 $(tput setaf 202)colors
+             julia --project=. -e 'using Pkg; Pkg.test()'
 
-             julia --color=yes --project=. -e 'using Pkg; pkg"test"'
+  Coverage:
+    needs: Test
+    if: github.event.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: coverage
+        run: |
+             julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+             julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
+      - uses: codecov/codecov-action@v1
