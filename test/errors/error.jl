@@ -12,4 +12,12 @@ f()
 
 end
 
+@testset "error testset 2" begin
+
+@test false
+@test false
+throw(ErrorException("error"))
+
+end
+
 end # module test_errors_error
