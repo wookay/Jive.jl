@@ -56,21 +56,22 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
 end
 
 """
-    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true)
+    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true, stop_on_failure::Bool=false)
 
 run the test files from the specific directory.
 
 * `dir`: the root directory to traverse.
 * `skip`: files or directories to skip.
 * `node1`: run on node 1 during for the distributed tests.
-* `targets`: filter targets and start. default is `ARGS`
-* `enable_distributed`: option for distributed
+* `targets`: filter targets and start. default is `ARGS`.
+* `enable_distributed`: option for distributed.
+* `stop_on_failure`: stop on the failure or error.
 """
-function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true)
+function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true, stop_on_failure::Bool=false)
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs) || !enable_distributed
-        run(dir, all_tests, start_idx)
+        normal_run(dir, all_tests, start_idx, stop_on_failure)
     else
         num_procs = nprocs()
         if isempty(env_jive_procs)
@@ -81,9 +82,9 @@ function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[],
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1))
+            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), stop_on_failure)
         else
-            run(dir, all_tests, start_idx)
+            normal_run(dir, all_tests, start_idx, stop_on_failure)
         end
     end
 end
@@ -195,7 +196,6 @@ end
 
 # finish
 function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, elapsedtime::UInt64)
-    #Base.timev_print(t, memallocs)
     # If we are a nested test set, do not print a full summary
     # now - let the parent test set do the printing
     if get_testset_depth() != 0
@@ -214,13 +214,6 @@ function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, el
     if TESTSET_PRINT_ENABLE[]
         jive_print_counts(io, ts, compile_elapsedtime, elapsedtime) # print_test_results(ts)
     end
-
-    # Finally throw an error as we are the outermost test set
-    # if total != total_pass + total_broken
-    #     # Get all the error/failures and bring them along for the ride
-    #     efs = filter_errors(ts)
-    #     throw(TestSetException(total_pass,total_fail,total_error, total_broken, efs))
-    # end
 
     # return the testset so it is returned from the @testset macro
     ts
@@ -308,8 +301,8 @@ using Distributed # @everywhere remotecall_fetch
 function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath::String)
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
-    context = IOContext(buf, :color => have_color())
-    (ts, cumulative_compile_time, elapsed_time) = @jive_testset context numbering subpath " (worker: $worker)" "" begin
+    io = IOContext(buf, :color => have_color())
+    (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath " (worker: $worker)" "" begin
         Main.include(filepath)
     end
     (ts, cumulative_compile_time, elapsed_time, buf)
@@ -317,7 +310,7 @@ end
 
 @generated have_color() = :(2 != Base.JLOptions().color)
 
-function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String})
+function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, stop_on_failure::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "Sys.CPU_THREADS", color=:cyan)
     printstyled(io, ": ", Sys.CPU_THREADS)
@@ -350,10 +343,11 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             end
         end
         @everywhere @eval(Main, using Jive)
+        stop = false
         @sync begin
             for worker in workers()
                 @async begin
-                    while length(tests) > 0
+                    while !stop && length(tests) > 0
                         idx += 1
                         subpath = popfirst!(tests)
                         env[worker] = (idx, subpath)
@@ -376,6 +370,10 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             n_passed += passes + c_passes
                             n_failed += fails + c_fails
                             n_errors += errors + c_errors
+                            if stop_on_failure && (n_failed > 0 || n_errors > 0)
+                                stop = true
+                                break
+                            end
                         end
                     end # while length(tests) > 0
                     if worker != 1
@@ -383,6 +381,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         rmprocs(worker, waitfor=0)
                     end
                 end # @async begin
+                stop && break
             end # for worker in workers()
         end # @sync begin
         worker = myid()
@@ -398,6 +397,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             n_passed += passes + c_passes
             n_failed += fails + c_fails
             n_errors += errors + c_errors
+            stop_on_failure && (n_failed > 0 || n_errors > 0) && break
         end
     catch err
         anynonpass += 1
@@ -440,7 +440,7 @@ end # module Jive.CodeFromJuliaTest
 using .CodeFromJuliaTest: distributed_run, have_color
 using .CodeFromStdlibTest: @jive_testset, get_test_counts, cumulative_compile_time_ns
 
-function run(dir::String, tests::Vector{String}, start_idx::Int)
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     anynonpass = 0
     n_passed = 0
@@ -467,6 +467,7 @@ function run(dir::String, tests::Vector{String}, start_idx::Int)
         n_passed += passes + c_passes
         n_failed += fails + c_fails
         n_errors += errors + c_errors
+        stop_on_failure && (n_failed > 0 || n_errors > 0) && break
     end
     report(io, total_cumulative_compile_time, total_elapsed_time, anynonpass, n_passed, n_failed, n_errors)
 end

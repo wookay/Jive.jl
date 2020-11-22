@@ -39,6 +39,7 @@ jobs:
                              julia              -pauto runtests.jl jive/s jive/m start=2
                              julia              -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s", "jive/__REPL__"], node1=["jive/m"])'
                              julia              -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], node1=["jive/m"])' || true
+                             julia                     -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], stop_on_failure=true)' || true
              cd ..
 
       - name: runtests - test/Example
