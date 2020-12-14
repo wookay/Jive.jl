@@ -2,6 +2,10 @@
 
 run the test files in a specific directory and path.
 
+```@docs
+Jive.runtests
+```
+
 suppose you have some test files in the `test/` directory for your package.
 now let's make your `test/runtests.jl` with
 
