@@ -219,7 +219,15 @@ function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, el
     ts
 end
 
-cumulative_compile_time_ns = VERSION >= v"1.6.0-DEV.1088" ? Base.cumulative_compile_time_ns : () -> UInt64(0)
+cumulative_compile_time_ns_before, cumulative_compile_time_ns_after = begin
+    if VERSION >= v"1.7.0-DEV.84"
+        (Base.cumulative_compile_time_ns_before, Base.cumulative_compile_time_ns_after)
+    elseif VERSION >= v"1.6.0-DEV.1088"
+        (Base.cumulative_compile_time_ns, Base.cumulative_compile_time_ns)
+    else
+        (() -> UInt64(0), () -> UInt64(0))
+    end
+end
 
 # testset_beginend
 function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, args, tests, source::LineNumberNode)
@@ -250,7 +258,7 @@ function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, 
         # by wrapping the body in a function
         local RNG = default_rng()
         local oldrng = copy(RNG)
-        local compile_elapsedtime0 = cumulative_compile_time_ns()
+        local compile_elapsedtime0 = cumulative_compile_time_ns_before()
         local elapsedtime0 = time_ns()
         try
             # RNG is re-seeded with its own seed to ease reproduce a failed test
@@ -269,7 +277,7 @@ function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, 
             copy!(RNG, oldrng)
         end
         pop_testset()
-        local compile_elapsedtime = cumulative_compile_time_ns() - compile_elapsedtime0
+        local compile_elapsedtime = cumulative_compile_time_ns_after() - compile_elapsedtime0
         local elapsedtime = time_ns() - elapsedtime0
         local ts = jive_finish($(esc(io)), ts, compile_elapsedtime, elapsedtime)
         (ts, compile_elapsedtime, elapsedtime)
@@ -293,7 +301,7 @@ end # module Jive.CodeFromStdlibTest
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 module CodeFromJuliaTest
 
-using ..CodeFromStdlibTest: @jive_testset, get_test_counts, cumulative_compile_time_ns
+using ..CodeFromStdlibTest: @jive_testset, get_test_counts
 using ..Jive: slash_to_path_separator, report, jive_briefing
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
@@ -438,7 +446,7 @@ end # module Jive.CodeFromJuliaTest
 
 
 using .CodeFromJuliaTest: distributed_run, have_color
-using .CodeFromStdlibTest: @jive_testset, get_test_counts, cumulative_compile_time_ns
+using .CodeFromStdlibTest: @jive_testset, get_test_counts
 
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool)
     io = IOContext(Core.stdout, :color => have_color())
