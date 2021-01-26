@@ -220,7 +220,7 @@ function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, el
 end
 
 cumulative_compile_time_ns_before, cumulative_compile_time_ns_after = begin
-    if VERSION >= v"1.6.0-DEV.1819"
+    if VERSION >= v"1.6.0-DEV.1819" && isdefined(Base, :cumulative_compile_time_ns_before)
         (Base.cumulative_compile_time_ns_before, Base.cumulative_compile_time_ns_after)
     elseif VERSION >= v"1.6.0-DEV.1088"
         (Base.cumulative_compile_time_ns, Base.cumulative_compile_time_ns)
