@@ -10,7 +10,7 @@ const watched_folders = Dict{String, Tuple{FolderMonitor,Task}}()
 watch the folders.
 """
 function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vector{Any},Vector{String}}=[])
-    (all_files, start_idx) = get_all_files(dir, [], targets)
+    (all_files, start_idx) = get_all_files(dir, String[], targets)
     for src in sources
         for (root, dirs, files) in walkdir(isfile(src) ? dirname(src) : src)
             for filename in files
