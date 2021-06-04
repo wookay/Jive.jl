@@ -262,7 +262,11 @@ function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, 
         local elapsedtime0 = time_ns()
         try
             # RNG is re-seeded with its own seed to ease reproduce a failed test
-            Random.seed!(RNG.seed)
+            if VERSION >= v"1.7.0-DEV.1225"
+                Random.seed!(Random.GLOBAL_SEED)
+            else
+                Random.seed!(RNG.seed)
+            end
             let
                 $(esc(tests))
             end
