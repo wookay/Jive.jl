@@ -30,12 +30,12 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
                         start_idx = parse(Int, val)
                     end
                 else
-                    subpath = path_separator_to_slash(arg)
-                    if subpath == "."
-                    elseif startswith(subpath, "./")
-                        push!(filters, subpath[3:end])
-                    elseif any(x -> startswith(subpath, x), dir_and_files)
-                        push!(filters, subpath)
+                    filterpath = path_separator_to_slash(arg)
+                    if filterpath == "."
+                    elseif startswith(filterpath, "./")
+                        push!(filters, filterpath[3:end])
+                    elseif any(filepath -> startswith(filepath, filterpath) || startswith(filterpath, filepath), dir_and_files)
+                        push!(filters, filterpath)
                     end
                 end
             end
@@ -46,10 +46,10 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
         for filename in files
             !endswith(filename, ".jl") && continue
             root == dir && "runtests.jl" == filename && continue
-            subpath = path_separator_to_slash(relpath(normpath(root, filename), dir))
-            any(x -> startswith(subpath, x), path_separator_to_slash.(skip)) && continue
-            !isempty(filters) && !any(x -> startswith(subpath, x), filters) && continue
-            push!(all_files, subpath)
+            filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
+            any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
+            !isempty(filters) && !any(filterpath -> startswith(filepath, filterpath), filters) && continue
+            push!(all_files, filepath)
         end
     end
     (all_files, start_idx)
