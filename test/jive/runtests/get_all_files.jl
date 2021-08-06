@@ -32,4 +32,16 @@ targets = ["abc"]
 (all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
 @test isempty(all_files)
 
+targets = ["abc", "test1"]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl"]
+
+targets = ["abc", "test"]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+
+targets = ["abc", "test1", "test2"]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+
 end # module test_jive_runtests_get_all_files
