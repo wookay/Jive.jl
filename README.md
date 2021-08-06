@@ -75,7 +75,7 @@ in the above example, test files are matched for only have `jive/s` and jumping 
 [TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
 look at also the `test/Project.toml` file for your own package.
 ```toml
-[extras]
+[deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
 
