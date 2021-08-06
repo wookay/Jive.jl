@@ -44,4 +44,16 @@ targets = ["abc", "test1", "test2"]
 (all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
 @test all_files == ["test1.jl", "test2.jl"]
 
+targets = String[]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+
+targets = [""]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+
+targets = ["."]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+
 end # module test_jive_runtests_get_all_files
