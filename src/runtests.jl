@@ -34,7 +34,7 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
                     if filterpath == "."
                     elseif startswith(filterpath, "./")
                         push!(filters, filterpath[3:end])
-                    elseif any(filepath -> startswith(filepath, filterpath) || startswith(filterpath, filepath), dir_and_files)
+                    else
                         push!(filters, filterpath)
                     end
                 end
