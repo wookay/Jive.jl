@@ -1,9 +1,14 @@
 module test_test_logs
 
 using Test
-using Logging: Info
 
-@test_logs (Info,)  @info "foo"
-@test_logs (:info,) @info "foo"
+@test_logs (:info, "foo") @info "foo"
+
+function f()
+    @info "bar"
+    @info "baz"
+    :ok
+end
+@test (@test_logs (:info, "bar") (:info, "baz") f()) === :ok
 
 end # module test_test_logs
