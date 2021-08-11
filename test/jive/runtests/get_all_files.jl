@@ -55,5 +55,11 @@ targets = [""]
 targets = ["."]
 (all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
 @test all_files == ["test1.jl", "test2.jl"]
+@test start_idx == 1
+
+targets = [".", "start=2"]
+(all_files, start_idx) = Jive.get_all_files(dir, skip, targets)
+@test all_files == ["test1.jl", "test2.jl"]
+@test start_idx == 2
 
 end # module test_jive_runtests_get_all_files
