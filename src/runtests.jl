@@ -324,11 +324,12 @@ end
 
 function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, stop_on_failure::Bool)
     io = IOContext(Core.stdout, :color => have_color())
-    printstyled(io, "Sys.CPU_THREADS", color=:cyan)
-    printstyled(io, ": ", Sys.CPU_THREADS)
-    printstyled(io, ", ")
     printstyled(io, "nworkers()", color=:cyan)
-    printstyled(io, ": ", nworkers())
+    printstyled(io, ": ", nworkers(), ", ")
+    printstyled(io, "Sys.CPU_THREADS", color=:cyan)
+    printstyled(io, ": ", Sys.CPU_THREADS, ", ")
+    printstyled(io, "Threads.nthreads()", color=:cyan)
+    printstyled(io, ": ", Threads.nthreads())
     println(io)
 
     idx = 0
