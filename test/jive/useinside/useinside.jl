@@ -23,7 +23,7 @@ module test_jive_useinside_isdefined
 using Test
 using ..test_jive_useinside
 
-@test isdefined(Main, :test_jive_useinside)
+@test !isdefined(Main, :test_jive_useinside)
 @test isdefined(test_jive_useinside, :A)
 @test !isdefined(test_jive_useinside, :B)
 

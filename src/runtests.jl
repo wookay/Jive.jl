@@ -315,7 +315,7 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath
     buf = IOBuffer()
     io = IOContext(buf, :color => have_color())
     (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath " (worker: $worker)" "" begin
-        Main.include(filepath)
+        include(filepath)
     end
     (ts, cumulative_compile_time, elapsed_time, buf)
 end
@@ -351,11 +351,11 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 if prj == "@."
                     prj = ""
                 end
-                @everywhere @eval(Main, using Pkg)
-                @everywhere @eval(Main, Pkg.activate($prj))
+                @everywhere @eval(using Pkg)
+                @everywhere @eval(Pkg.activate($prj))
             end
         end
-        @everywhere @eval(Main, using Jive)
+        @everywhere @eval(using Jive)
         stop = false
         @sync begin
             for worker in workers()
@@ -471,7 +471,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         filepath = normpath(dir, slash_to_path_separator(subpath))
         numbering = string(idx, /, length(tests))
         (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath "" "" begin
-            Main.include(filepath)
+            include(filepath)
         end
         total_cumulative_compile_time += cumulative_compile_time
         total_elapsed_time += elapsed_time
