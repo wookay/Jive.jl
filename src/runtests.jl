@@ -166,7 +166,7 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt
         print(io, repeat(' ', 4))
         printstyled(io, "Fail", " "; bold=true, color=Base.error_color())
         printstyled(io, nf, color=Base.error_color())
-        println(io)
+        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
     end
 
     ne = errors + c_errors
@@ -174,7 +174,7 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt
         print(io, repeat(' ', 4))
         printstyled(io, "Error", " "; bold=true, color=Base.error_color())
         printstyled(io, ne, color=Base.error_color())
-        println(io)
+        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
     end
 
     nb = broken + c_broken
@@ -182,7 +182,7 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt
         print(io, repeat(' ', 4))
         printstyled(io, "Broken", " "; bold=true, color=Base.warn_color())
         printstyled(io, nb, color=Base.warn_color())
-        println(io)
+        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
     end
 
     np = passes + c_passes
