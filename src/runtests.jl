@@ -317,8 +317,9 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     io = IOContext(buf, :color => have_color())
+    modul = Module()
     (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath " (worker: $worker)" "" begin
-        include(filepath)
+        Base.include(modul, filepath)
     end
     (ts, cumulative_compile_time, elapsed_time, buf)
 end
@@ -464,6 +465,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
     n_errors = 0
     total_cumulative_compile_time = UInt64(0)
     total_elapsed_time = UInt64(0)
+    modul = Module()
     for (idx, subpath) in enumerate(tests)
         if idx < start_idx
             num_tests = length(tests)
@@ -474,7 +476,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         filepath = normpath(dir, slash_to_path_separator(subpath))
         numbering = string(idx, /, length(tests))
         (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath "" "" begin
-            include(filepath)
+            Base.include(modul, filepath)
         end
         total_cumulative_compile_time += cumulative_compile_time
         total_elapsed_time += elapsed_time
