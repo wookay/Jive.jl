@@ -161,37 +161,40 @@ end
 function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, elapsedtime::UInt64)
     passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
 
+    printed = false
     nf = fails + c_fails
     if nf > 0
         print(io, repeat(' ', 4))
-        printstyled(io, "Fail", " "; bold=true, color=Base.error_color())
+        printstyled(io, "Fail:", " "; bold=true, color=Base.error_color())
         printstyled(io, nf, color=Base.error_color())
-        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
+        printed = true
     end
 
     ne = errors + c_errors
     if ne > 0
         print(io, repeat(' ', 4))
-        printstyled(io, "Error", " "; bold=true, color=Base.error_color())
+        printstyled(io, "Error:", " "; bold=true, color=Base.error_color())
         printstyled(io, ne, color=Base.error_color())
-        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
+        printed = true
     end
 
     nb = broken + c_broken
     if nb > 0
         print(io, repeat(' ', 4))
-        printstyled(io, "Broken", " "; bold=true, color=Base.warn_color())
+        printstyled(io, "Broken:", " "; bold=true, color=Base.warn_color())
         printstyled(io, nb, color=Base.warn_color())
-        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
+        printed = true
     end
 
     np = passes + c_passes
     if np > 0
         print(io, repeat(' ', 4))
-        printstyled(io, "Pass", " "; bold=true, color=:green)
+        printstyled(io, "Pass:", " "; bold=true, color=:green)
         printstyled(io, np, color=:green)
-        print_elapsed_times(io, compile_elapsedtime, elapsedtime)
+        printed = true
     end
+
+    printed && print_elapsed_times(io, compile_elapsedtime, elapsedtime)
 end
 
 # finish

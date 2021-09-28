@@ -16,6 +16,7 @@ end
 
 @test false
 @test false
+@test false
 throw(ErrorException("error"))
 
 end
