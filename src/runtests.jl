@@ -56,7 +56,14 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
 end
 
 """
-    runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true, stop_on_failure::Bool=false, context::Union{Nothing,Module}=nothing)
+    runtests(dir::String ;
+             skip::Union{Vector{Any},Vector{String}} = String[],
+             node1::Union{Vector{Any},Vector{String}} = [],
+             targets::Vector{String} = ARGS,
+             enable_distributed::Bool = true,
+             stop_on_failure::Bool = false,
+             context::Union{Nothing,Module} = nothing,
+             print_numbered_list::Bool = true)
 
 run the test files from the specific directory.
 
@@ -67,12 +74,20 @@ run the test files from the specific directory.
 * `enable_distributed`: option for distributed.
 * `stop_on_failure`: stop on the failure or error.
 * `context`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
+* `print_numbered_list`: print numbered test list
 """
-function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[], node1::Union{Vector{Any},Vector{String}}=[], targets::Vector{String}=ARGS, enable_distributed::Bool=true, stop_on_failure::Bool=false, context::Union{Nothing,Module}=nothing)
+function runtests(dir::String ;
+                  skip::Union{Vector{Any},Vector{String}} = String[],
+                  node1::Union{Vector{Any},Vector{String}} = [],
+                  targets::Vector{String} = ARGS,
+                  enable_distributed::Bool = true,
+                  stop_on_failure::Bool = false,
+                  context::Union{Nothing,Module} = nothing,
+                  print_numbered_list::Bool = true)
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs) || !enable_distributed
-        normal_run(dir, all_tests, start_idx, stop_on_failure, context)
+        normal_run(dir, all_tests, start_idx, stop_on_failure, context, print_numbered_list)
     else
         num_procs = nprocs()
         if isempty(env_jive_procs)
@@ -83,9 +98,9 @@ function runtests(dir::String; skip::Union{Vector{Any},Vector{String}}=String[],
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), stop_on_failure, context)
+            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), stop_on_failure, context, print_numbered_list)
         else
-            normal_run(dir, all_tests, start_idx, stop_on_failure, context)
+            normal_run(dir, all_tests, start_idx, stop_on_failure, context, print_numbered_list)
         end
     end
 end
@@ -135,11 +150,13 @@ function print_elapsed_times(io::IO, compile_elapsedtime::UInt64, elapsedtime::U
     println(io, ")")
 end
 
-function jive_briefing(io::IO, numbering::String, subpath::String, msg::String, description::String)
-    printstyled(io, numbering, color=:underline)
-    print(io, ' ', subpath)
-    !isempty(msg) && print(io, ' ', msg)
-    println(io)
+function jive_briefing(io::IO, numbering::String, subpath::String, print_numbered_list::Bool, msg::String, description::String)
+    if print_numbered_list
+        printstyled(io, numbering, color=:underline)
+        print(io, ' ', subpath)
+        !isempty(msg) && print(io, ' ', msg)
+        println(io)
+    end
 end
 
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
@@ -231,7 +248,7 @@ cumulative_compile_time_ns_before, cumulative_compile_time_ns_after = begin
 end
 
 # testset_beginend
-function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, args, tests, source::LineNumberNode)
+function jive_testset_beginend(io, numbering, subpath, print_numbered_list, msg::Union{String,Expr}, args, tests, source::LineNumberNode)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc === nothing
         desc = ""
@@ -249,7 +266,7 @@ function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, 
     ex = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
         local ts = $(testsettype)($desc; $options...)
-        jive_briefing($(esc(io)), $(esc(numbering)), $(esc(subpath)), $(esc(msg)), ts.description)
+        jive_briefing($(esc(io)), $(esc(numbering)), $(esc(subpath)), $(esc(print_numbered_list)), $(esc(msg)), ts.description)
         # this empty loop is here to force the block to be compiled,
         # which is needed for backtrace scrubbing to work correctly.
         while false; end
@@ -295,9 +312,9 @@ function jive_testset_beginend(io, numbering, subpath, msg::Union{String,Expr}, 
 end
 
 # @testset
-macro jive_testset(io, numbering, subpath, msg, args...)
+macro jive_testset(io, numbering, subpath, print_numbered_list, msg, args...)
     tests = args[end]
-    return jive_testset_beginend(io, numbering, subpath, msg, args, tests, __source__)
+    return jive_testset_beginend(io, numbering, subpath, print_numbered_list, msg, args, tests, __source__)
 end
 
 end # module Jive.CodeFromStdlibTest
@@ -311,11 +328,11 @@ using ..Jive: slash_to_path_separator, report, jive_briefing
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
 
-function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath::String, context::Union{Nothing,Module})
+function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath::String, context::Union{Nothing,Module}, print_numbered_list::Bool)
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     io = IOContext(buf, :color => have_color())
-    (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath " (worker: $worker)" "" begin
+    (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath print_numbered_list " (worker: $worker)" "" begin
         if isnothing(context)
             Base.include(Module(), filepath)
         else
@@ -327,7 +344,7 @@ end
 
 @generated have_color() = :(2 != Base.JLOptions().color)
 
-function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, stop_on_failure::Bool, context::Union{Nothing,Module})
+function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, stop_on_failure::Bool, context::Union{Nothing,Module}, print_numbered_list::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "nworkers()", color=:cyan)
     printstyled(io, ": ", nworkers(), ", ")
@@ -371,14 +388,14 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         env[worker] = (idx, subpath)
                         if idx < start_idx
                             numbering = string(idx, /, num_tests)
-                            jive_briefing(io, numbering, subpath, "--", "")
+                            jive_briefing(io, numbering, subpath, print_numbered_list, "--", "")
                             continue
                         end
                         if any(x -> startswith(subpath, x), node1)
                             push!(node1_tests, (idx, subpath))
                         else
                             filepath = normpath(dir, slash_to_path_separator(subpath))
-                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath, context)
+                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, filepath, context, print_numbered_list)
                             (ts, cumulative_compile_time, elapsed_time, buf) = fetch(f)
                             total_cumulative_compile_time += cumulative_compile_time
                             total_elapsed_time += elapsed_time
@@ -434,7 +451,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 if haskey(env, remote_worker)
                     (idx, subpath) = env[remote_worker]
                     numbering = string(idx, /, num_tests)
-                    jive_briefing(io, numbering, subpath, " (worker: $remote_worker)", "")
+                    jive_briefing(io, numbering, subpath, print_numbered_list, " (worker: $remote_worker)", "")
                 end
                 print(io, ": ")
                 println.(Ref(io), result.captured.ex.errors_and_fails)
@@ -458,7 +475,7 @@ end # module Jive.CodeFromJuliaTest
 using .CodeFromJuliaTest: distributed_run, have_color
 using .CodeFromStdlibTest: @jive_testset, get_test_counts
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool, context::Union{Nothing,Module})
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool, context::Union{Nothing,Module}, print_numbered_list::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     anynonpass = 0
     n_passed = 0
@@ -470,12 +487,12 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         if idx < start_idx
             num_tests = length(tests)
             numbering = string(idx, /, num_tests)
-            jive_briefing(io, numbering, subpath, "--", "")
+            jive_briefing(io, numbering, subpath, print_numbered_list, "--", "")
             continue
         end
         filepath = normpath(dir, slash_to_path_separator(subpath))
         numbering = string(idx, /, length(tests))
-        (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath "" "" begin
+        (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath print_numbered_list "" "" begin
             if isnothing(context)
                 Base.include(Module(), filepath)
             else
