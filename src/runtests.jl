@@ -136,13 +136,10 @@ function print_elapsed_times(io::IO, compile_elapsedtime::UInt64, elapsedtime::U
 end
 
 function jive_briefing(io::IO, numbering::String, subpath::String, msg::String, description::String)
-    buf = IOBuffer()
-    context = IOContext(buf, :color => true)
-    printstyled(context, numbering, color=:underline)
-    print(context, ' ', subpath)
-    !isempty(msg) && print(context, ' ', msg)
-    println(context)
-    print(io, String(take!(buf)))
+    printstyled(io, numbering, color=:underline)
+    print(io, ' ', subpath)
+    !isempty(msg) && print(io, ' ', msg)
+    println(io)
 end
 
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
