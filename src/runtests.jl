@@ -159,6 +159,20 @@ function jive_briefing(io::IO, numbering::String, subpath::String, verbose::Bool
     end
 end
 
+function include_test_file(context::Union{Nothing,Module}, filepath::String)
+    if isnothing(context)
+        m = Module()
+        # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
+        Core.eval(m, quote
+            eval(x) = Core.eval($m, x)
+            include(x) = Base.include($m, x)
+        end)
+        Base.include(m, filepath)
+    else
+        Base.include(context, filepath)
+    end
+end
+
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
 module CodeFromStdlibTest
 
@@ -324,7 +338,7 @@ end # module Jive.CodeFromStdlibTest
 module CodeFromJuliaTest
 
 using ..CodeFromStdlibTest: @jive_testset, get_test_counts
-using ..Jive: slash_to_path_separator, report, jive_briefing
+using ..Jive: slash_to_path_separator, report, jive_briefing, include_test_file
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
 
@@ -332,13 +346,7 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, filepath
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     io = IOContext(buf, :color => have_color())
-    (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose " (worker: $worker)" "" begin
-        if isnothing(context)
-            Base.include(Module(), filepath)
-        else
-            Base.include(context, filepath)
-        end
-    end
+    (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose " (worker: $worker)" "" include_test_file(context, filepath)
     (ts, cumulative_compile_time, elapsed_time, buf)
 end
 
@@ -492,13 +500,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         end
         filepath = normpath(dir, slash_to_path_separator(subpath))
         numbering = string(idx, /, length(tests))
-        (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose "" "" begin
-            if isnothing(context)
-                Base.include(Module(), filepath)
-            else
-                Base.include(context, filepath)
-            end
-        end
+        (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose "" "" include_test_file(context, filepath)
         total_cumulative_compile_time += cumulative_compile_time
         total_elapsed_time += elapsed_time
         passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)

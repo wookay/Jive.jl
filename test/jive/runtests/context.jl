@@ -16,6 +16,8 @@ runtests(@__DIR__, targets=["target1"], enable_distributed=false, context=Main, 
 runtests(@__DIR__, targets=["target1"], enable_distributed=false, context=@__MODULE__, verbose=false)
 @test context_variable == 3
 
+include("target1.jl")
+@test context_variable == eval(:(3+2))
 
 
 module test_jive_runtests_context
@@ -37,6 +39,9 @@ runtests(@__DIR__, targets=["target1"], enable_distributed=false, context=Main, 
 @test nameof(@__MODULE__()) === :test_jive_runtests_context
 runtests(@__DIR__, targets=["target1"], enable_distributed=false, context=@__MODULE__, verbose=false)
 @test context_variable == 3
+
+include("target1.jl")
+@test context_variable == eval(:(3+2))
 
 runtests(@__DIR__, targets=["target2"], enable_distributed=false, verbose=false)
 
