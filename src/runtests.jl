@@ -494,7 +494,11 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         numbering = string(idx, /, length(tests))
         (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose "" "" begin
             if isnothing(context)
-                Base.include(Module(), filepath)
+                m = Module()
+                @eval m begin
+                    using Base.MainInclude:include
+                end   
+                Base.include(m, filepath)
             else
                 Base.include(context, filepath)
             end

@@ -1,0 +1,1 @@
+included_function() = 42
