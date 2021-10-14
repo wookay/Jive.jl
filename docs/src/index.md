@@ -91,7 +91,7 @@ using Jive
 runtests(@__DIR__, skip=["revise.jl"])
 
 ~/.julia/dev/Jive/test/Example/test $ cat revise.jl
-# julia -i -q --project=.. revise.jl example
+# julia -i -q --project=. revise.jl example
 
 using Revise, Jive
 using Example
