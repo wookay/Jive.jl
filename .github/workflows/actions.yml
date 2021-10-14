@@ -44,12 +44,12 @@ jobs:
                              julia                     -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], stop_on_failure=true)' || true
              cd ..
 
-      - name: runtests - test/Example
+      - name: revise
         run: |
-             julia -e 'using Pkg; pkg"dev test/Example"'
-             cd test/Example
-             julia -p2 --project=. test/runtests.jl example
-             cd ../..
+             cd test/Example/test/
+             julia -e 'using Pkg; pkg"dev Revise .."'
+             julia --project=. -e 'p1 = @async include("revise.jl"); @async begin; Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); exit(0); end; end; wait(p1)' example
+             cd ../../../
 
   TestOnWindows:
     needs: Test

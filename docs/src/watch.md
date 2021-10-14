@@ -22,10 +22,12 @@ watch(@__DIR__, sources=[pathof(Example)]) do path
 end
 # Jive.stop(watch)
 
-~/.julia/dev/Jive/test/Example/test $ julia --project=.. -q -i revise.jl example
+~/.julia/dev/Jive/test/Example/test $ julia -e 'using Pkg; pkg"dev Revise .."'
+
+~/.julia/dev/Jive/test/Example/test $ julia --project=. -q -i revise.jl example
 watching folders ...
-  - example
   - ../src
+  - example
 ```
 
 when saving any files in the watching folders, it automatically run tests.
