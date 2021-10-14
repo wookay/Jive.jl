@@ -48,7 +48,7 @@ jobs:
         run: |
              cd test/Example/test/
              julia -e 'using Pkg; pkg"dev Revise .."'
-             julia --project=. -e 'p1 = @async include("revise.jl"); @async begin; Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); exit(0); end; end; wait(p1)' example
+             julia --project=. -e 'p1 = @async include("revise.jl"); Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); sleep(1); exit(0); end; wait(p1)' example
              cd ../../../
 
   TestOnWindows:
