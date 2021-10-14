@@ -108,7 +108,9 @@ trigger("")
 
 Base.JLOptions().isinteractive==0 && wait()
 
-~/.julia/dev/Jive/test/Example/test $ julia -i -q --project=.. revise.jl example
+~/.julia/dev/Jive/test/Example/test $ julia -e 'using Pkg; pkg"dev Revise .."'
+
+~/.julia/dev/Jive/test/Example/test $ julia -i -q --project=. revise.jl example
 watching folders ...
   - ../src
   - example
