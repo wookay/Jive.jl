@@ -112,8 +112,8 @@ function Base.showerror(io::IO, ex::FinishedWithErrors, bt; backtrace=true)
     printstyled(io, "Test run finished with errors.", color=:red, bold=true)
 end
 
-function report(io::IO, total_cumulative_compile_time::UInt64, total_elapsed_time::UInt64, anynonpass::Int, n_passed::Int, n_failed::Int, n_errors::Int)
-    if anynonpass > 0 || n_failed > 0 || n_errors > 0
+function jive_report(io::IO, total_cumulative_compile_time::UInt64, total_elapsed_time::UInt64, anynonpass::Bool, n_passed::Int, n_failed::Int, n_errors::Int)
+    if anynonpass || n_failed > 0 || n_errors > 0
         printstyled(io, "❗️  ", color=:red)
         print(io, "Test run finished with ")
         if n_failed > 0
@@ -176,7 +176,7 @@ end
 # code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
 module CodeFromStdlibTest
 
-using Test: DefaultTestSet, Error, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, get_test_counts, filter_errors
+using Test: DefaultTestSet, Fail, Error, Broken, TestSetException, Random, get_testset_depth, get_testset, record, pop_testset, parse_testset_args, _check_testset, push_testset, filter_errors
 using ..Jive: jive_briefing, print_elapsed_times
 using Printf
 
@@ -186,11 +186,51 @@ else
     default_rng = () -> Random.GLOBAL_RNG
 end
 
-# print_counts
+function check_any_non_pass(tc::NamedTuple{(:passes, :fails, :errors, :broken, :c_passes, :c_fails, :c_errors, :c_broken, :skipped, :c_skipped)})::Bool
+    tc.fails + tc.errors + tc.c_fails + tc.c_errors > 0
+end
+
+# jive Test.get_test_counts
+function jive_get_test_counts(ts::DefaultTestSet)::NamedTuple{(:passes, :fails, :errors, :broken, :c_passes, :c_fails, :c_errors, :c_broken, :skipped, :c_skipped)}
+    passes, fails, errors, broken = ts.n_passed, 0, 0, 0
+    c_passes, c_fails, c_errors, c_broken = 0, 0, 0, 0
+    skipped, c_skipped = 0, 0
+    for t in ts.results
+        isa(t, Fail)   && (fails  += 1)
+        isa(t, Error)  && (errors += 1)
+        if isa(t, Broken)
+            if t.test_type === :skipped
+                skipped += 1
+            else
+                broken += 1
+            end
+        end
+        if isa(t, DefaultTestSet)
+            tc = jive_get_test_counts(t)
+            c_passes  += tc.passes  + tc.c_passes
+            c_fails   += tc.fails   + tc.c_fails
+            c_errors  += tc.errors  + tc.c_errors
+            c_broken  += tc.broken  + tc.c_broken
+            c_skipped += tc.skipped + tc.c_skipped
+        end
+    end
+    return (; passes=passes, fails=fails, errors=errors, broken=broken, c_passes=c_passes, c_fails=c_fails, c_errors=c_errors, c_broken=c_broken, skipped=skipped, c_skipped=c_skipped)
+end
+
+# jive Test.print_counts
 function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, elapsedtime::UInt64)
-    passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
+    tc = jive_get_test_counts(ts)
+    passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken, skipped, c_skipped = tc.passes, tc.fails, tc.errors, tc.broken, tc.c_passes, tc.c_fails, tc.c_errors, tc.c_broken, tc.skipped, tc.c_skipped
 
     printed = false
+    np = passes + c_passes
+    if np > 0
+        print(io, repeat(' ', 4))
+        printstyled(io, "Pass:", " "; bold=true, color=:green)
+        printstyled(io, np, color=:green)
+        printed = true
+    end
+
     nf = fails + c_fails
     if nf > 0
         print(io, repeat(' ', 4))
@@ -215,18 +255,18 @@ function jive_print_counts(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt
         printed = true
     end
 
-    np = passes + c_passes
-    if np > 0
+    ns = skipped + c_skipped
+    if ns > 0
         print(io, repeat(' ', 4))
-        printstyled(io, "Pass:", " "; bold=true, color=:green)
-        printstyled(io, np, color=:green)
+        printstyled(io, "Skip:", " "; bold=true, color=Base.warn_color())
+        printstyled(io, ns, color=Base.warn_color())
         printed = true
     end
 
     printed && print_elapsed_times(io, compile_elapsedtime, elapsedtime)
 end
 
-# finish
+# jive Test.finish
 function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, elapsedtime::UInt64, verbose::Bool)
     # If we are a nested test set, do not print a full summary
     # now - let the parent test set do the printing
@@ -236,12 +276,6 @@ function jive_finish(io::IO, ts::DefaultTestSet, compile_elapsedtime::UInt64, el
         record(parent_ts, ts)
         return ts
     end
-    passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-    total_pass   = passes + c_passes
-    total_fail   = fails  + c_fails
-    total_error  = errors + c_errors
-    total_broken = broken + c_broken
-    total = total_pass + total_fail + total_error + total_broken
 
     if verbose
         jive_print_counts(io, ts, compile_elapsedtime, elapsedtime) # print_test_results(ts)
@@ -337,8 +371,8 @@ end # module Jive.CodeFromStdlibTest
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 module CodeFromJuliaTest
 
-using ..CodeFromStdlibTest: @jive_testset, get_test_counts
-using ..Jive: slash_to_path_separator, report, jive_briefing, include_test_file
+using ..CodeFromStdlibTest: @jive_testset, jive_get_test_counts, check_any_non_pass
+using ..Jive: slash_to_path_separator, jive_report, jive_briefing, include_test_file
 using Test.Random # RandomDevice
 using Distributed # @everywhere remotecall_fetch
 
@@ -366,7 +400,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     num_tests = length(tests)
     env = Dict{Int,Tuple{Int,String}}()
 
-    anynonpass = 0
+    anynonpass = false
     n_passed = 0
     n_failed = 0
     n_errors = 0
@@ -408,11 +442,11 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             total_cumulative_compile_time += cumulative_compile_time
                             total_elapsed_time += elapsed_time
                             print(io, String(take!(buf)))
-                            passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-                            anynonpass += ts.anynonpass
-                            n_passed += passes + c_passes
-                            n_failed += fails + c_fails
-                            n_errors += errors + c_errors
+                            tc = jive_get_test_counts(ts)
+                            anynonpass |= check_any_non_pass(tc)
+                            n_passed += tc.passes + tc.c_passes
+                            n_failed += tc.fails  + tc.c_fails
+                            n_errors += tc.errors + tc.c_errors
                             if stop_on_failure && (n_failed > 0 || n_errors > 0)
                                 stop = true
                                 break
@@ -435,15 +469,15 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             total_cumulative_compile_time += cumulative_compile_time
             total_elapsed_time += elapsed_time
             print(io, String(take!(buf)))
-            passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-            anynonpass += ts.anynonpass
-            n_passed += passes + c_passes
-            n_failed += fails + c_fails
-            n_errors += errors + c_errors
+            tc = jive_get_test_counts(ts)
+            anynonpass |= check_any_non_pass(tc)
+            n_passed += tc.passes + tc.c_passes
+            n_failed += tc.fails  + tc.c_fails
+            n_errors += tc.errors + tc.c_errors
             stop_on_failure && (n_failed > 0 || n_errors > 0) && break
         end
     catch err
-        anynonpass += 1
+        anynonpass = true
         print(io, "⚠️  ")
         if err isa CompositeException
             exception = first(err.exceptions)
@@ -474,18 +508,18 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     finally
         GC.gc()
     end
-    verbose && report(io, total_cumulative_compile_time, total_elapsed_time, anynonpass, n_passed, n_failed, n_errors)
+    verbose && jive_report(io, total_cumulative_compile_time, total_elapsed_time, anynonpass, n_passed, n_failed, n_errors)
 end
 
 end # module Jive.CodeFromJuliaTest
 
 
 using .CodeFromJuliaTest: distributed_run, have_color
-using .CodeFromStdlibTest: @jive_testset, get_test_counts
+using .CodeFromStdlibTest: @jive_testset, jive_get_test_counts, check_any_non_pass
 
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool, context::Union{Nothing,Module}, verbose::Bool)
     io = IOContext(Core.stdout, :color => have_color())
-    anynonpass = 0
+    anynonpass = false
     n_passed = 0
     n_failed = 0
     n_errors = 0
@@ -503,14 +537,14 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         (ts, cumulative_compile_time, elapsed_time) = @jive_testset io numbering subpath verbose "" "" include_test_file(context, filepath)
         total_cumulative_compile_time += cumulative_compile_time
         total_elapsed_time += elapsed_time
-        passes, fails, errors, broken, c_passes, c_fails, c_errors, c_broken = get_test_counts(ts)
-        anynonpass += ts.anynonpass
-        n_passed += passes + c_passes
-        n_failed += fails + c_fails
-        n_errors += errors + c_errors
+        tc = jive_get_test_counts(ts)
+        anynonpass |= check_any_non_pass(tc)
+        n_passed += tc.passes + tc.c_passes
+        n_failed += tc.fails  + tc.c_fails
+        n_errors += tc.errors + tc.c_errors
         stop_on_failure && (n_failed > 0 || n_errors > 0) && break
     end
-    verbose && report(io, total_cumulative_compile_time, total_elapsed_time, anynonpass, n_passed, n_failed, n_errors)
+    verbose && jive_report(io, total_cumulative_compile_time, total_elapsed_time, anynonpass, n_passed, n_failed, n_errors)
 end
 
 # module Jive
