@@ -6,7 +6,7 @@ module TestTools
 export @testset
 
 import Test: @testset
-using Test: AbstractTestSet, DefaultTestSet, Error, Random, testset_forloop, testset_beginend, get_testset_depth, get_testset, push_testset, pop_testset, finish, record, _check_testset
+using Test: Test, AbstractTestSet, DefaultTestSet, Error, Random, testset_forloop, get_testset_depth, get_testset, push_testset, pop_testset, finish, record, _check_testset
 if VERSION >= v"1.3.0-DEV.565"
     default_rng = Random.default_rng
 else
@@ -30,7 +30,12 @@ macro testset(args...)
     if tests.head === :for
         ex = testset_forloop(args, tests, __source__)
     else
-        ex = testset_beginend(args, tests, __source__)
+        if VERSION >= v"1.8.0-DEV.809"
+            testset_beginend_call = Test.testset_beginend_call
+        else
+            testset_beginend_call = Test.testset_beginend
+        end
+        ex = testset_beginend_call(args, tests, __source__)
     end
     desc = first(args)
     !(desc in skip_testsets) && return ex
