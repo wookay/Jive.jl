@@ -344,7 +344,13 @@ function jive_testset_beginend(io, numbering, subpath, verbose, msg::Union{Strin
             err isa InterruptException && rethrow()
             # something in the test block threw an error. Count that as an
             # error in this test set
-            backtrace = VERSION >= v"1.2.0-DEV.459" ? Base.catch_stack() : stacktrace(catch_backtrace())
+            backtrace = if VERSION >= v"1.7.0-DEV.1106"
+                    Base.current_exceptions()
+                elseif VERSION >= v"1.2.0-DEV.459"
+                    Base.catch_stack()
+                else
+                    stacktrace(catch_backtrace())
+                end
             linenumber = VERSION >= v"1.5.0-DEV.283" ? LineNumberNode(err.line, Symbol(err.file)) : LineNumberNode(err.line, err.file)
             record(ts, Error(:nontest_error, :(), err, backtrace, linenumber))
         finally
