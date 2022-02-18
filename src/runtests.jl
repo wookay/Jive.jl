@@ -299,7 +299,11 @@ end
 function jive_testset_beginend(io, numbering, subpath, verbose, msg::Union{String,Expr}, args, tests, source::LineNumberNode)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc === nothing
-        desc = ""
+        if tests.head === :call
+            desc = string(tests.args[1]) # use the function name as test name
+        else
+            desc = "test set"
+        end
     end
     # If we're at the top level we'll default to DefaultTestSet. Otherwise
     # default to the type of the parent testset

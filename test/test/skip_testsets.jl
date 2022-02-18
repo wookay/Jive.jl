@@ -23,8 +23,8 @@ macro testset(args...)
     tests = args[end]
 
     # Determine if a single block or for-loop style
-    if !isa(tests,Expr) || (tests.head !== :for && tests.head !== :block)
-        error("Expected begin/end block or for loop as argument to @testset")
+    if !isa(tests,Expr) || (tests.head !== :for && tests.head !== :block && tests.head != :call)
+        error("Expected function call, begin/end block or for loop as argument to @testset")
     end
 
     if tests.head === :for
