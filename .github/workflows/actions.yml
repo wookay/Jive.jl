@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.7.1]
+        julia-version: [1.7.2]
         julia-arch: [x64]
         os: [ubuntu-latest, macos-latest]
         include:
@@ -67,6 +67,8 @@ jobs:
       - uses: actions/checkout@master
       - name: coverage
         run: |
-             julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
-             julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
+             julia --version
+                             julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+             JIVE_PROCS=auto julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+                             julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
       - uses: codecov/codecov-action@v1
