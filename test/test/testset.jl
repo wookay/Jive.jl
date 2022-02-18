@@ -14,7 +14,8 @@ end # module test_testset_verbose
 
 
 
-module test_testset_42518
+using Jive
+@If  VERSION >= v"1.8.0-DEV.809" module test_testset_42518
 
 using Test
 
@@ -26,9 +27,7 @@ function bar(n)
     @test n > 1
 end
 
-if VERSION >= v"1.8.0-DEV.809"
-    @testset foo()
-    @testset bar(2)
-end
+@testset foo()
+@testset bar(2)
 
 end # module test_testset_42518
