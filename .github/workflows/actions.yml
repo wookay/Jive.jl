@@ -45,6 +45,7 @@ jobs:
              cd ..
 
       - name: revise
+        if: matrix.julia-version != '1.5.4'
         run: |
              cd test/Example/test/
              julia -e 'using Pkg; pkg"dev Revise .."'
