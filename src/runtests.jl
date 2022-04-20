@@ -8,6 +8,11 @@ using Printf: Printf
 
 include("runtests_distributed_run.jl")
 include("runtests_code_from_stdlib_Test.jl")
+if VERSION >= v"1.6"
+    macro testset_for_julia_v15(args...) end
+else
+    include("runtests_for_julia_v15.jl")
+end
 
 # compat
 default_rng = begin
@@ -227,7 +232,11 @@ function jive_getting_on_the_floor(step::Step, verbose::Bool)
 end
 
 function jive_lets_dance(step::Step, stop_on_failure::Bool, context::Union{Nothing,Module}, filepath::String, verbose::Bool)
-    @testset_since_a23aa79f1a JiveTestSet "$(basename(filepath))" verbose=verbose step=step stop_on_failure=stop_on_failure context=context filepath=filepath include_test_file(context, filepath)
+    if VERSION >= v"1.6"
+        @testset_since_a23aa79f1a JiveTestSet "$(basename(filepath))" verbose=verbose step=step stop_on_failure=stop_on_failure context=context filepath=filepath include_test_file(context, filepath)
+    else
+        @testset_for_julia_v15 JiveTestSet "$(basename(filepath))" verbose=verbose step=step stop_on_failure=stop_on_failure context=context filepath=filepath include_test_file(context, filepath)
+    end
 end
 
 function jive_get_test_counts(ts::JiveTestSet)
