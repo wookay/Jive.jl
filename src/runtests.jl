@@ -18,13 +18,26 @@ default_rng = begin
     end
 end
 
-cumulative_compile_time_ns_before, cumulative_compile_time_ns_after = begin
-    if VERSION >= v"1.6.0-DEV.1819" && isdefined(Base, :cumulative_compile_time_ns_before)
-        (Base.cumulative_compile_time_ns_before, Base.cumulative_compile_time_ns_after)
-    elseif VERSION >= v"1.6.0-DEV.1088"
-        (Base.cumulative_compile_time_ns, Base.cumulative_compile_time_ns)
+cumulative_compile_timing, cumulative_compile_time_ns = begin
+    # julia commit 7074f04228d6149c2cefaa16064f30739f31da13
+    if VERSION >= v"1.9.0-DEV.416" && isdefined(Base, :cumulative_compile_timing)
+        (Base.cumulative_compile_timing, Base.cumulative_compile_time_ns)
     else
-        (() -> UInt64(0), () -> UInt64(0))
+        if VERSION >= v"1.6.0-DEV.1819" && isdefined(Base, :cumulative_compile_time_ns_before)
+            ref_compile_timing = Ref{Bool}()
+            function compile_timing(b::Bool)
+                ref_compile_timing[] = b
+            end
+            function compile_time_ns()
+                compile_time = ref_compile_timing[] ? Base.cumulative_compile_time_ns_before() : Base.cumulative_compile_time_ns_after()
+                (compile_time, UInt64(0))
+            end
+            (compile_timing, compile_time_ns)
+        elseif VERSION >= v"1.6.0-DEV.1088" && isdefined(Base, :cumulative_compile_time_ns)
+            ((::Bool) -> nothing, () -> (Base.cumulative_compile_time_ns(), UInt64(0)))
+        else
+            ((::Bool) -> nothing, () -> (UInt64(0), UInt64(0)))
+        end
     end
 end
 
@@ -168,6 +181,7 @@ end
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool, context::Union{Nothing,Module}, verbose::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     total_compile_time = UInt64(0)
+    total_recompile_time = UInt64(0)
     total_elapsed_time = UInt64(0)
     total_anynonpass = false
     n_passes = 0
@@ -187,6 +201,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         filepath = normpath(dir, slash_to_path_separator(subpath))
         ts = jive_lets_dance(step, stop_on_failure, context, filepath, verbose)
         total_compile_time += ts.compile_time
+        total_recompile_time += ts.recompile_time
         total_elapsed_time += ts.elapsed_time
         if !total_anynonpass && ts.anynonpass
             total_anynonpass = true
@@ -198,7 +213,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
         n_broken += tc.broken
         stop_on_failure && ts.anynonpass && break
     end
-    verbose && jive_report(io, total_compile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken)
+    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken)
 end
 
 function jive_getting_on_the_floor(step::Step, verbose::Bool)
@@ -241,7 +256,7 @@ function jive_get_test_counts(ts::JiveTestSet)
     return (; passes=passes, fails=fails, errors=errors, broken=broken, c_passes=c_passes, c_fails=c_fails, c_errors=c_errors, c_broken=c_broken, skipped=skipped, c_skipped=c_skipped)
 end
 
-function jive_print_counts(io::IO, compile_elapsedtime::UInt64, elapsedtime::UInt64, passes, fails, errors, broken, skipped)
+function jive_print_counts(io::IO, compile_elapsedtime::UInt64, recompile_elapsedtime::UInt64, elapsedtime::UInt64, passes, fails, errors, broken, skipped)
     printed = false
     if passes > 0
         print(io, repeat(' ', 4))
@@ -278,10 +293,10 @@ function jive_print_counts(io::IO, compile_elapsedtime::UInt64, elapsedtime::UIn
         printed = true
     end
 
-    printed && print_elapsed_times(io, compile_elapsedtime, elapsedtime)
+    printed && print_elapsed_times(io, compile_elapsedtime, recompile_elapsedtime, elapsedtime)
 end
 
-function jive_report(io::IO, total_compile_time::UInt64, total_elapsed_time::UInt64, total_anynonpass::Bool, n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int)
+function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::UInt64, total_elapsed_time::UInt64, total_anynonpass::Bool, n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int)
     if total_anynonpass || n_fails > 0 || n_errors > 0
         printstyled(io, "❗️  ", color=:red)
         print(io, "Test run finished with ")
@@ -297,7 +312,7 @@ function jive_report(io::IO, total_compile_time::UInt64, total_elapsed_time::UIn
             print(io, n_errors > 1 ? "s" : "")
         end
         print(io, ".")
-        print_elapsed_times(io, total_compile_time, total_elapsed_time)
+        print_elapsed_times(io, total_compile_time, total_recompile_time, total_elapsed_time)
         throw(FinishedWithErrors())
     elseif n_passes > 0
         printstyled(io, "✅  ", color=:green)
@@ -306,14 +321,18 @@ function jive_report(io::IO, total_compile_time::UInt64, total_elapsed_time::UIn
         print(io, " ")
         print(io, n_passes == 1 ? "test has" : "tests have")
         print(io, " been completed.")
-        print_elapsed_times(io, total_compile_time, total_elapsed_time)
+        print_elapsed_times(io, total_compile_time, total_recompile_time, total_elapsed_time)
     end
 end
 
-function print_elapsed_times(io::IO, compile_elapsedtime::UInt64, elapsedtime::UInt64)
+function print_elapsed_times(io::IO, compile_elapsedtime::UInt64, recompile_elapsedtime::UInt64, elapsedtime::UInt64)
     print(io, repeat(' ', 2), "(")
     if compile_elapsedtime > 0
-        Printf.@printf(io, "compile: %.2f, elapsed: ", compile_elapsedtime / 1e9)
+        Printf.@printf(io, "compile: %.2f, ", compile_elapsedtime / 1e9)
+        if recompile_elapsedtime > 0
+            Printf.@printf(io, "recompile: %.2f, ", recompile_elapsedtime / 1e9)
+        end
+        Printf.@printf(io, "elapsed: ")
     end
     Printf.@printf(io, "%.2f seconds", elapsedtime / 1e9)
     println(io, ")")

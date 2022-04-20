@@ -28,6 +28,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     num_tests = length(tests)
     env = Dict{Int,Tuple{Int,String}}()
     total_compile_time = UInt64(0)
+    total_recompile_time = UInt64(0)
     total_elapsed_time = UInt64(0)
     total_anynonpass = false
     n_passes = 0
@@ -70,6 +71,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
                             total_compile_time += ts.compile_time
+                            total_recompile_time += ts.recompile_time
                             total_elapsed_time += ts.elapsed_time
                             if !total_anynonpass && ts.anynonpass
                                 total_anynonpass = true
@@ -143,5 +145,5 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     finally
         GC.gc()
     end
-    verbose && jive_report(io, total_compile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken)
+    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken)
 end

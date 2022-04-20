@@ -17,8 +17,10 @@ mutable struct JiveTestSet <: AbstractTestSet
     context::Union{Nothing,Module}
     filepath::Union{Nothing,String}
     compile_time_start::UInt64
+    recompile_time_start::UInt64
     elapsed_time_start::UInt64
     compile_time::UInt64
+    recompile_time::UInt64
     elapsed_time::UInt64
     stop_on_failure::Bool
     description::String
@@ -32,7 +34,9 @@ mutable struct JiveTestSet <: AbstractTestSet
 end
 function JiveTestSet(desc::String; verbose::Bool = false, showtiming::Bool = true,
                                    step::Union{Nothing,Step} = nothing, context::Union{Nothing,Module} = nothing, filepath::Union{Nothing,String} = nothing, stop_on_failure::Bool = true)
-    JiveTestSet(step, context, filepath, cumulative_compile_time_ns_before(), time_ns(), Int64(0), UInt64(0), stop_on_failure, desc, [], 0, false, verbose, showtiming, time(), nothing)
+    ts = JiveTestSet(step, context, filepath, UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), stop_on_failure, desc, [], 0, false, verbose, showtiming, time(), nothing)
+    jive_start!(ts)
+    ts
 end
 
 # Test.@testset  1.8.0-DEV.809
@@ -83,12 +87,28 @@ end
 record(ts::JiveTestSet, t::AbstractTestSet) = push!(ts.results, t)
 
 function finish(ts::JiveTestSet)
-    ts.compile_time = cumulative_compile_time_ns_after() - ts.compile_time_start
+    jive_finish!(ts)
+end
+
+function jive_start!(ts::JiveTestSet)
+    elapsed_time_start = time_ns()
+    cumulative_compile_timing(true)
+    compile_time, recompile_time = cumulative_compile_time_ns()
+    ts.compile_time_start = compile_time
+    ts.recompile_time_start = recompile_time
+    ts.elapsed_time_start = elapsed_time_start
+end
+
+function jive_finish!(ts::JiveTestSet)
+    cumulative_compile_timing(false)
+    compile_time, recompile_time = cumulative_compile_time_ns()
+    ts.compile_time = compile_time - ts.compile_time_start
+    ts.recompile_time = recompile_time - ts.recompile_time_start
     ts.elapsed_time = time_ns() - ts.elapsed_time_start
     tc = jive_get_test_counts(ts)
     ts.anynonpass = (tc.fails + tc.errors + tc.c_fails + tc.c_errors > 0)
     io = ts.step === nothing ? Core.stdout : ts.step.io
-    ts.verbose && jive_print_counts(io, ts.compile_time, ts.elapsed_time, tc.passes, tc.fails, tc.errors, tc.broken, tc.skipped)
+    ts.verbose && jive_print_counts(io, ts.compile_time, ts.recompile_time, ts.elapsed_time, tc.passes, tc.fails, tc.errors, tc.broken, tc.skipped)
     total_pass   = tc.passes + tc.c_passes
     total_fail   = tc.fails  + tc.c_fails
     total_error  = tc.errors + tc.c_errors
