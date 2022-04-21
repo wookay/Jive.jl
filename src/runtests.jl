@@ -2,22 +2,16 @@
 
 # some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
-using Test: Test, Random
-using Distributed: Distributed, nprocs, nworkers, addprocs, rmprocs, workers
+using Test: Test, push_testset, pop_testset, get_testset_depth, get_testset
+using Distributed: Distributed, nprocs, addprocs
 using Printf: Printf
+
+jive_stop_on_failure = false
 
 include("runtests_distributed_run.jl")
 include("runtests_code_from_stdlib_Test.jl")
 
 # compat
-default_rng = begin
-    if VERSION >= v"1.3.0-DEV.565"
-        Random.default_rng
-    else
-        () -> Random.GLOBAL_RNG
-    end
-end
-
 cumulative_compile_timing, cumulative_compile_time_ns = begin
     # julia commit 7074f04228d6149c2cefaa16064f30739f31da13
     if VERSION >= v"1.9.0-DEV.416" && isdefined(Base, :cumulative_compile_timing)
@@ -40,24 +34,6 @@ cumulative_compile_timing, cumulative_compile_time_ns = begin
         end
     end
 end
-
-testset_beginend_call = begin
-    if VERSION >= v"1.8.0-DEV.809"
-        Test.testset_beginend_call
-    else
-        Test.testset_beginend
-    end
-end
-
-trigger_test_failure_break = begin
-    if VERSION >= v"1.9.0-DEV.228"
-        Test.trigger_test_failure_break
-    else
-        (err) -> nothing
-    end
-end
-
-jive_stop_on_failure = false
 
 struct FinishedWithErrors <: Exception
 end
@@ -242,14 +218,41 @@ function jive_lets_dance(step::Step)
     include_test_file(step.context, step.filepath)
 end
 
+function jive_start!(ts::JiveTestSet)
+    elapsed_time_start = time_ns()
+    cumulative_compile_timing(true)
+    compile_time, recompile_time = cumulative_compile_time_ns()
+    ts.compile_time_start = compile_time
+    ts.recompile_time_start = recompile_time
+    ts.elapsed_time_start = elapsed_time_start
+end
+
+function jive_finish!(io, verbose::Bool, from::Symbol, ts::JiveTestSet)
+    cumulative_compile_timing(false)
+    compile_time, recompile_time = cumulative_compile_time_ns()
+    ts.compile_time = compile_time - ts.compile_time_start
+    ts.recompile_time = recompile_time - ts.recompile_time_start
+    ts.elapsed_time = time_ns() - ts.elapsed_time_start
+
+    if from === :test
+        if get_testset_depth() != 0
+            # Attach this test set to the parent test set
+            parent_ts = get_testset()
+            record(parent_ts, ts)
+        end
+    end
+
+    ts
+end
+
 function jive_get_test_counts(ts::JiveTestSet)
     passes, fails, errors, broken = ts.n_passed, 0, 0, 0
     c_passes, c_fails, c_errors, c_broken = 0, 0, 0, 0
     skipped, c_skipped = 0, 0
     for t in ts.results
-        isa(t, Fail)   && (fails  += 1)
-        isa(t, Error)  && (errors += 1)
-        if isa(t, Broken)
+        isa(t, Test.Fail)   && (fails  += 1)
+        isa(t, Test.Error)  && (errors += 1)
+        if isa(t, Test.Broken)
             if t.test_type === :skipped
                 skipped += 1
             else

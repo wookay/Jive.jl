@@ -1,6 +1,6 @@
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
-using .Distributed: @everywhere, RemoteException, remotecall, remotecall_fetch, myid
+using .Distributed: @everywhere, RemoteException, remotecall, remotecall_fetch, myid, nworkers, rmprocs, workers
 
 function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context::Union{Nothing,Module}, filepath::String, verbose::Bool, color::Bool)
     numbering = string(idx, /, num_tests)
