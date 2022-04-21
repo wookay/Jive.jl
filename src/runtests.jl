@@ -58,9 +58,11 @@ trigger_test_failure_break = begin
     if VERSION >= v"1.9.0-DEV.228"
         Test.trigger_test_failure_break
     else
-        () -> nothing
+        (err) -> nothing
     end
 end
+
+jive_stop_on_failure = false
 
 struct FinishedWithErrors <: Exception
 end
@@ -148,10 +150,11 @@ function runtests(dir::String ;
                   stop_on_failure::Bool = false,
                   context::Union{Nothing,Module} = nothing,
                   verbose::Bool = true)
+    jive_stop_on_failure = stop_on_failure
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs) || !enable_distributed
-        normal_run(dir, all_tests, start_idx, stop_on_failure, context, verbose)
+        normal_run(dir, all_tests, start_idx, context, verbose)
     else
         num_procs = nprocs()
         if isempty(env_jive_procs)
@@ -162,9 +165,9 @@ function runtests(dir::String ;
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), stop_on_failure, context, verbose)
+            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose)
         else
-            normal_run(dir, all_tests, start_idx, stop_on_failure, context, verbose)
+            normal_run(dir, all_tests, start_idx, context, verbose)
         end
     end
 end
@@ -183,7 +186,7 @@ function include_test_file(context::Union{Nothing,Module}, filepath::String)
     end
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_failure::Bool, context::Union{Nothing,Module}, verbose::Bool)
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     total_compile_time = UInt64(0)
     total_recompile_time = UInt64(0)
@@ -193,50 +196,55 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, stop_on_
     n_fails = 0
     n_errors = 0
     n_broken = 0
+    n_skipped = 0
     for (idx, subpath) in enumerate(tests)
         num_tests = length(tests)
         numbering = string(idx, /, num_tests)
         if idx < start_idx
-            step = Step(io, numbering, subpath, " --")
-            jive_getting_on_the_floor(step, verbose)
+            step = Step(io, numbering, subpath, " --", context, "", verbose)
+            jive_getting_on_the_floor(io, verbose, step)
             continue
         end
-        step = Step(io, numbering, subpath, "")
-        jive_getting_on_the_floor(step, verbose)
         filepath = normpath(dir, slash_to_path_separator(subpath))
-        ts = jive_lets_dance(step, stop_on_failure, context, filepath, verbose)
+        step = Step(io, numbering, subpath, "", context, filepath, verbose)
+        jive_getting_on_the_floor(io, verbose, step)
+        description = step.numbering
+        ts = JiveTestSet(description)
+        push_testset(ts)
+        jive_start!(ts)
+        jive_lets_dance(step)
+        jive_finish!(io, verbose, :jive, ts)
+        pop_testset()
         total_compile_time += ts.compile_time
         total_recompile_time += ts.recompile_time
         total_elapsed_time += ts.elapsed_time
-        if !total_anynonpass && ts.anynonpass
+        tc = jive_get_test_counts(ts)
+        verbose && jive_print_counts(io, ts, tc)
+        n_passes += tc.passes + tc.c_passes
+        n_fails += tc.fails + tc.c_fails
+        n_errors += tc.errors + tc.c_errors
+        n_broken += tc.broken + tc.c_broken
+        n_skipped += tc.skipped + tc.c_skipped
+        if !total_anynonpass && got_anynonpass(tc)
             total_anynonpass = true
         end
-        tc = jive_get_test_counts(ts)
-        n_passes += tc.passes
-        n_fails += tc.fails
-        n_errors += tc.errors
-        n_broken += tc.broken
-        stop_on_failure && ts.anynonpass && break
+        jive_stop_on_failure && total_anynonpass && break
     end
-    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken)
+    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, total_anynonpass, n_passes, n_fails, n_errors, n_broken, n_skipped)
 end
 
-function jive_getting_on_the_floor(step::Step, verbose::Bool)
+function jive_getting_on_the_floor(io, verbose::Bool, step::Step)::Nothing
     if verbose
-        io = step.io
         printstyled(io, step.numbering, color=:underline)
         print(io, ' ', step.subpath)
         !isempty(step.msg) && print(io, ' ', step.msg)
         println(io)
     end
+    nothing
 end
 
-function jive_lets_dance(step::Step, stop_on_failure::Bool, context::Union{Nothing,Module}, filepath::String, verbose::Bool)
-    if VERSION >= v"1.6"
-        @testset_since_a23aa79f1a JiveTestSet "$(basename(filepath))" verbose=verbose step=step stop_on_failure=stop_on_failure context=context filepath=filepath include_test_file(context, filepath)
-    else
-        @testset_for_julia_v15 JiveTestSet "$(basename(filepath))" verbose=verbose step=step stop_on_failure=stop_on_failure context=context filepath=filepath include_test_file(context, filepath)
-    end
+function jive_lets_dance(step::Step)
+    include_test_file(step.context, step.filepath)
 end
 
 function jive_get_test_counts(ts::JiveTestSet)
@@ -254,7 +262,7 @@ function jive_get_test_counts(ts::JiveTestSet)
             end
         end
         if isa(t, JiveTestSet)
-            tc = get_test_counts(t)
+            tc = jive_get_test_counts(t)
             c_passes  += tc.passes  + tc.c_passes
             c_fails   += tc.fails   + tc.c_fails
             c_errors  += tc.errors  + tc.c_errors
@@ -265,7 +273,17 @@ function jive_get_test_counts(ts::JiveTestSet)
     return (; passes=passes, fails=fails, errors=errors, broken=broken, c_passes=c_passes, c_fails=c_fails, c_errors=c_errors, c_broken=c_broken, skipped=skipped, c_skipped=c_skipped)
 end
 
-function jive_print_counts(io::IO, compile_elapsedtime::UInt64, recompile_elapsedtime::UInt64, elapsedtime::UInt64, passes, fails, errors, broken, skipped)
+function got_anynonpass(tc)::Bool
+    tc.fails + tc.errors + tc.c_fails + tc.c_errors > 0
+end
+
+function jive_print_counts(io::IO, ts::JiveTestSet, tc)
+    passes = tc.passes + tc.c_passes
+    fails = tc.fails + tc.c_fails
+    errors = tc.errors + tc.c_errors
+    broken = tc.broken + tc.c_broken
+    skipped =  tc.skipped + tc.c_skipped
+
     printed = false
     if passes > 0
         print(io, repeat(' ', 4))
@@ -302,10 +320,10 @@ function jive_print_counts(io::IO, compile_elapsedtime::UInt64, recompile_elapse
         printed = true
     end
 
-    printed && print_elapsed_times(io, compile_elapsedtime, recompile_elapsedtime, elapsedtime)
+    printed && print_elapsed_times(io, ts.compile_time, ts.recompile_time, ts.elapsed_time)
 end
 
-function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::UInt64, total_elapsed_time::UInt64, total_anynonpass::Bool, n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int)
+function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::UInt64, total_elapsed_time::UInt64, total_anynonpass::Bool, n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int, n_skipped::Int)
     if total_anynonpass || n_fails > 0 || n_errors > 0
         printstyled(io, "❗️  ", color=:red)
         print(io, "Test run finished with ")
@@ -334,16 +352,16 @@ function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::U
     end
 end
 
-function print_elapsed_times(io::IO, compile_elapsedtime::UInt64, recompile_elapsedtime::UInt64, elapsedtime::UInt64)
+function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
     print(io, repeat(' ', 2), "(")
-    if compile_elapsedtime > 0
-        Printf.@printf(io, "compile: %.2f, ", compile_elapsedtime / 1e9)
-        if recompile_elapsedtime > 0
-            Printf.@printf(io, "recompile: %.2f, ", recompile_elapsedtime / 1e9)
+    if compile_time > 0
+        Printf.@printf(io, "compile: %.2f, ", compile_time / 1e9)
+        if recompile_time > 0
+            Printf.@printf(io, "recompile: %.2f, ", recompile_time / 1e9)
         end
         Printf.@printf(io, "elapsed: ")
     end
-    Printf.@printf(io, "%.2f seconds", elapsedtime / 1e9)
+    Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
     println(io, ")")
 end
 
