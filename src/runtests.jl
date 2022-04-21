@@ -8,11 +8,6 @@ using Printf: Printf
 
 include("runtests_distributed_run.jl")
 include("runtests_code_from_stdlib_Test.jl")
-if VERSION >= v"1.6"
-    macro testset_for_julia_v15(args...) end
-else
-    include("runtests_for_julia_v15.jl")
-end
 
 # compat
 default_rng = begin
