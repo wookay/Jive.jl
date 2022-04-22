@@ -2,7 +2,7 @@
 
 # some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
-using Test: Test, AbstractTestSet, push_testset, pop_testset, get_testset_depth, get_testset
+using Test: Test, push_testset, pop_testset, get_testset_depth, get_testset
 using Distributed: Distributed, nprocs, addprocs
 using Printf: Printf
 
@@ -30,25 +30,24 @@ cumulative_compile_timing, cumulative_compile_time_ns = begin
     end
 end
 
-mutable struct JiveTestSet <: AbstractTestSet
-    description::String
-    results::Vector{Any}
-    n_passed::Int
-    compile_time_start::UInt64
-    recompile_time_start::UInt64
-    elapsed_time_start::UInt64
+jive_stop_on_failure = false
+
+include("runtests_testset.jl")
+include("runtests_distributed_run.jl")
+
+mutable struct Total
     compile_time::UInt64
     recompile_time::UInt64
     elapsed_time::UInt64
-    function JiveTestSet(description::String; verbose::Bool = false, showtiming::Bool = true)
-        new(description, [], 0, UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0))
+    n_passes::Int
+    n_fails::Int
+    n_errors::Int
+    n_broken::Int
+    n_skipped::Int
+    function Total()
+        new(UInt64(0), UInt64(0), UInt64(0), 0, 0, 0, 0, 0)
     end
 end
-
-jive_stop_on_failure = false
-
-include("runtests_code_from_stdlib_Test.jl")
-include("runtests_distributed_run.jl")
 
 struct FinishedWithErrors <: Exception
 end
@@ -176,57 +175,55 @@ end
 
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)
     io = IOContext(Core.stdout, :color => have_color())
-    total_compile_time   = UInt64(0)
-    total_recompile_time = UInt64(0)
-    total_elapsed_time   = UInt64(0)
-    n_passes  = 0
-    n_fails   = 0
-    n_errors  = 0
-    n_broken  = 0
-    n_skipped = 0
+    total = Total()
     for (idx, subpath) in enumerate(tests)
         num_tests = length(tests)
         numbering = string(idx, /, num_tests)
         if idx < start_idx
-            jive_getting_on_the_floor(io, verbose, numbering, subpath, " --")
+            verbose && jive_getting_on_the_floor(io, numbering, subpath, " --")
             continue
         end
-        jive_getting_on_the_floor(io, verbose, numbering, subpath, "")
+        verbose && jive_getting_on_the_floor(io, numbering, subpath, "")
         filepath = normpath(dir, slash_to_path_separator(subpath))
-        description = numbering
+        description = jive_testset_description(numbering)
         ts = JiveTestSet(description)
-        push_testset(ts)
-        jive_start!(ts)
-        jive_lets_dance(context, filepath)
-        jive_finish!(io, verbose, :jive, ts)
-        pop_testset()
-        total_compile_time   += ts.compile_time
-        total_recompile_time += ts.recompile_time
-        total_elapsed_time   += ts.elapsed_time
-        tc = jive_get_test_counts(ts)
-        verbose && jive_print_counts(io, ts, tc)
-        n_passes  += tc.passes  + tc.c_passes
-        n_fails   += tc.fails   + tc.c_fails
-        n_errors  += tc.errors  + tc.c_errors
-        n_broken  += tc.broken  + tc.c_broken
-        n_skipped += tc.skipped + tc.c_skipped
+        jive_lets_dance(io, verbose, ts, context, filepath)
+        jive_accumulate_testset_data(io, verbose, total, ts)
         jive_stop_on_failure && got_anynonpass(tc) && break
     end
-    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, n_passes, n_fails, n_errors, n_broken, n_skipped)
+    verbose && jive_report(io, total)
 end
 
-function jive_getting_on_the_floor(io, verbose::Bool, numbering::String, subpath::String, msg::String)::Nothing
-    if verbose
-        printstyled(io, numbering, color=:underline)
-        print(io, ' ', subpath)
-        !isempty(msg) && print(io, ' ', msg)
-        println(io)
-    end
-    nothing
+function jive_accumulate_testset_data(io::IO, verbose::Bool, total::Total, ts::JiveTestSet)
+    total.compile_time   += ts.compile_time
+    total.recompile_time += ts.recompile_time
+    total.elapsed_time   += ts.elapsed_time
+    tc = jive_get_test_counts(ts)
+    verbose && jive_print_counts(io, ts, tc)
+    total.n_passes  += tc.passes  + tc.c_passes
+    total.n_fails   += tc.fails   + tc.c_fails
+    total.n_errors  += tc.errors  + tc.c_errors
+    total.n_broken  += tc.broken  + tc.c_broken
+    total.n_skipped += tc.skipped + tc.c_skipped
 end
 
-function jive_lets_dance(context::Union{Nothing,Module}, filepath::String)
+function jive_testset_description(numbering)
+    numbering
+end
+
+function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, msg::String)::Nothing
+    printstyled(io, numbering, color=:underline)
+    print(io, ' ', subpath)
+    !isempty(msg) && print(io, ' ', msg)
+    println(io)
+end
+
+function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context::Union{Nothing,Module}, filepath::String)
+    push_testset(ts)
+    jive_start!(ts)
     include_test_file(context, filepath)
+    jive_finish!(io, verbose, :jive, ts)
+    pop_testset()
 end
 
 function jive_start!(ts::JiveTestSet)
@@ -331,7 +328,10 @@ function jive_print_counts(io::IO, ts::JiveTestSet, tc)
     printed && print_elapsed_times(io, ts.compile_time, ts.recompile_time, ts.elapsed_time)
 end
 
-function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::UInt64, total_elapsed_time::UInt64, n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int, n_skipped::Int)
+function jive_report(io::IO, total::Total)
+    n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int, n_skipped::Int =
+        total.n_passes, total.n_fails, total.n_errors, total.n_broken, total.n_skipped
+
     if n_fails > 0 || n_errors > 0
         printstyled(io, "❗️  ", color=:red)
         print(io, "Test run finished with ")
@@ -347,7 +347,7 @@ function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::U
             print(io, n_errors > 1 ? "s" : "")
         end
         print(io, ".")
-        print_elapsed_times(io, total_compile_time, total_recompile_time, total_elapsed_time)
+        print_elapsed_times(io, total.compile_time, total.recompile_time, total.elapsed_time)
         throw(FinishedWithErrors())
     elseif n_passes > 0
         printstyled(io, "✅  ", color=:green)
@@ -356,7 +356,7 @@ function jive_report(io::IO, total_compile_time::UInt64, total_recompile_time::U
         print(io, " ")
         print(io, n_passes == 1 ? "test has" : "tests have")
         print(io, " been completed.")
-        print_elapsed_times(io, total_compile_time, total_recompile_time, total_elapsed_time)
+        print_elapsed_times(io, total.compile_time, total.recompile_time, total.elapsed_time)
     end
 end
 

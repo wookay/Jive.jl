@@ -6,14 +6,10 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context:
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     io = IOContext(buf, :color => color)
-    jive_getting_on_the_floor(io, verbose, numbering, subpath, " (worker: $worker)")
-    description = numbering
+    verbose && jive_getting_on_the_floor(io, numbering, subpath, " (worker: $worker)")
+    description = jive_testset_description(numbering)
     ts = JiveTestSet(description)
-    push_testset(ts)
-    jive_start!(ts)
-    jive_lets_dance(context, filepath)
-    jive_finish!(io, verbose, :jive, ts)
-    pop_testset()
+    jive_lets_dance(io, verbose, ts, context, filepath)
     (ts, buf)
 end
 
@@ -29,15 +25,8 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
 
     idx = 0
     num_tests = length(tests)
-    env = Dict{Int,Tuple{Int,String}}()
-    total_compile_time = UInt64(0)
-    total_recompile_time = UInt64(0)
-    total_elapsed_time = UInt64(0)
-    n_passes = 0
-    n_fails = 0
-    n_errors = 0
-    n_broken = 0
-    n_skipped = 0
+    index_subpath_dict = Dict{Int,Tuple{Int,String}}()
+    total = Total()
     try
         node1_tests = []
         if isfile(normpath(dir, "Project.toml"))
@@ -59,10 +48,10 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                     while !stop && length(tests) > 0
                         idx += 1
                         subpath = popfirst!(tests)
-                        env[worker] = (idx, subpath)
+                        index_subpath_dict[worker] = (idx, subpath)
                         if idx < start_idx
                             numbering = string(idx, /, num_tests)
-                            jive_getting_on_the_floor(io, verbose, numbering, subpath, " --")
+                            verbose && jive_getting_on_the_floor(io, numbering, subpath, " --")
                             continue
                         end
                         if any(x -> startswith(subpath, x), node1)
@@ -72,16 +61,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
-                            total_compile_time   += ts.compile_time
-                            total_recompile_time += ts.recompile_time
-                            total_elapsed_time   += ts.elapsed_time
-                            tc = jive_get_test_counts(ts)
-                            verbose && jive_print_counts(io, ts, tc)
-                            n_passes  += tc.passes  + tc.c_passes
-                            n_fails   += tc.fails   + tc.c_fails
-                            n_errors  += tc.errors  + tc.c_errors
-                            n_broken  += tc.broken  + tc.c_broken
-                            n_skipped += tc.skipped + tc.c_skipped
+                            jive_accumulate_testset_data(io, verbose, total, ts)
                             if jive_stop_on_failure && got_anynonpass(tc)
                                 stop = true
                                 break
@@ -102,19 +82,8 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
             (ts, buf) = fetch(f)
             verbose && print(io, String(take!(buf)))
-            total_compile_time   += ts.compile_time
-            total_recompile_time += ts.recompile_time
-            total_elapsed_time   += ts.elapsed_time
-            tc = jive_get_test_counts(ts)
-            verbose && jive_print_counts(io, ts, tc)
-            n_passes  += tc.passes  + tc.c_passes
-            n_fails   += tc.fails   + tc.c_fails
-            n_errors  += tc.errors  + tc.c_errors
-            n_broken  += tc.broken  + tc.c_broken
-            n_skipped += tc.skipped + tc.c_skipped
-            if jive_stop_on_failure && got_anynonpass(tc)
-                break
-            end
+            jive_accumulate_testset_data(io, verbose, total, ts)
+            jive_stop_on_failure && got_anynonpass(tc) && break
         end
     catch err
         print(io, "⚠️  ")
@@ -128,11 +97,11 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                 result = nothing
             end
             if result isa RemoteException
-                remote_worker = result.pid
-                if haskey(env, remote_worker)
-                    (idx, subpath) = env[remote_worker]
+                worker = result.pid # worker (remote)
+                if haskey(index_subpath_dict, worker)
+                    (idx, subpath) = index_subpath_dict[worker]
                     numbering = string(idx, /, num_tests)
-                    jive_getting_on_the_floor(io, verbose, numbering, subpath, " (worker: $remote_worker)")
+                    verbose && jive_getting_on_the_floor(io, numbering, subpath, " (worker: $worker)")
                     showerror(io, result)
                     println(io)
                 end
@@ -147,5 +116,5 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     finally
         GC.gc()
     end
-    verbose && jive_report(io, total_compile_time, total_recompile_time, total_elapsed_time, n_passes, n_fails, n_errors, n_broken, n_skipped)
+    verbose && jive_report(io, total)
 end

@@ -1,6 +1,23 @@
 # module Jive
 
-# code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
+# some code from https://github.com/JuliaLang/julia/blob/master/stdlib/Test/src/Test.jl
+
+using .Test: AbstractTestSet
+
+mutable struct JiveTestSet <: AbstractTestSet
+    description::String
+    results::Vector{Any}
+    n_passed::Int
+    compile_time_start::UInt64
+    recompile_time_start::UInt64
+    elapsed_time_start::UInt64
+    compile_time::UInt64
+    recompile_time::UInt64
+    elapsed_time::UInt64
+    function JiveTestSet(description::String; verbose::Bool = false, showtiming::Bool = true)
+        new(description, [], 0, UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0))
+    end
+end
 
 using .Test: TESTSET_PRINT_ENABLE, scrub_backtrace
 import .Test: record, finish
