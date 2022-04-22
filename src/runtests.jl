@@ -173,6 +173,10 @@ function include_test_file(context::Union{Nothing,Module}, filepath::String)
     end
 end
 
+function got_anynonpass(tc)::Bool
+    any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
+end
+
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
@@ -207,7 +211,7 @@ function jive_accumulate_testset_data(io::IO, verbose::Bool, total::Total, ts::J
     total.n_skipped += tc.skipped + tc.c_skipped
 end
 
-function jive_testset_description(numbering)
+function jive_testset_description(numbering)::String
     numbering
 end
 
@@ -230,17 +234,17 @@ function jive_start!(ts::JiveTestSet)
     elapsed_time_start = time_ns()
     cumulative_compile_timing(true)
     compile_time, recompile_time = cumulative_compile_time_ns()
-    ts.compile_time_start = compile_time
+    ts.compile_time_start   = compile_time
     ts.recompile_time_start = recompile_time
-    ts.elapsed_time_start = elapsed_time_start
+    ts.elapsed_time_start   = elapsed_time_start
 end
 
-function jive_finish!(io, verbose::Bool, from::Symbol, ts::JiveTestSet)
+function jive_finish!(io::IO, verbose::Bool, from::Symbol, ts::JiveTestSet)
     cumulative_compile_timing(false)
     compile_time, recompile_time = cumulative_compile_time_ns()
-    ts.compile_time = compile_time - ts.compile_time_start
+    ts.compile_time   = compile_time - ts.compile_time_start
     ts.recompile_time = recompile_time - ts.recompile_time_start
-    ts.elapsed_time = time_ns() - ts.elapsed_time_start
+    ts.elapsed_time   = time_ns() - ts.elapsed_time_start
 
     if from === :test
         if get_testset_depth() != 0
@@ -251,6 +255,19 @@ function jive_finish!(io, verbose::Bool, from::Symbol, ts::JiveTestSet)
     end
 
     ts
+end
+
+function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
+    print(io, repeat(' ', 2), "(")
+    if compile_time > 0
+        Printf.@printf(io, "compile: %.2f, ", compile_time / 1e9)
+        if recompile_time > 0
+            Printf.@printf(io, "recompile: %.2f, ", recompile_time / 1e9)
+        end
+        Printf.@printf(io, "elapsed: ")
+    end
+    Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
+    println(io, ")")
 end
 
 function jive_get_test_counts(ts::JiveTestSet)
@@ -276,10 +293,6 @@ function jive_get_test_counts(ts::JiveTestSet)
         end
     end
     return (; passes=passes, fails=fails, errors=errors, broken=broken, c_passes=c_passes, c_fails=c_fails, c_errors=c_errors, c_broken=c_broken, skipped=skipped, c_skipped=c_skipped)
-end
-
-function got_anynonpass(tc)::Bool
-    tc.fails + tc.c_fails + tc.errors + tc.c_errors > 0
 end
 
 function jive_print_counts(io::IO, ts::JiveTestSet, tc)
@@ -358,19 +371,6 @@ function jive_report(io::IO, total::Total)
         print(io, " been completed.")
         print_elapsed_times(io, total.compile_time, total.recompile_time, total.elapsed_time)
     end
-end
-
-function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
-    print(io, repeat(' ', 2), "(")
-    if compile_time > 0
-        Printf.@printf(io, "compile: %.2f, ", compile_time / 1e9)
-        if recompile_time > 0
-            Printf.@printf(io, "recompile: %.2f, ", recompile_time / 1e9)
-        end
-        Printf.@printf(io, "elapsed: ")
-    end
-    Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
-    println(io, ")")
 end
 
 # module Jive
