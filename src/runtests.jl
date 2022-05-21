@@ -271,9 +271,9 @@ function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt6
 end
 
 function jive_get_test_counts(ts::JiveTestSet)
-      passes,   fails,   errors,   broken,   skipped = ts.n_passed, 0, 0, 0, 0
-    c_passes, c_fails, c_errors, c_broken, c_skipped = 0,           0, 0, 0, 0
-    for t in ts.results
+      passes,   fails,   errors,   broken,   skipped = ts.default.n_passed, 0, 0, 0, 0
+    c_passes, c_fails, c_errors, c_broken, c_skipped = 0,                   0, 0, 0, 0
+    for t in ts.default.results
         isa(t, Test.Fail)   && (fails  += 1)
         isa(t, Test.Error)  && (errors += 1)
         if isa(t, Test.Broken)

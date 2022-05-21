@@ -31,3 +31,15 @@ end
 @testset bar(2)
 
 end # module test_testset_42518
+
+
+module test_testset_failfast
+
+using Test
+
+# julia 1.9.0-DEV.623 commit 88def1afe16acdfe41b15dc956742359d837ce04
+@testset failfast = true begin
+    @test true
+end
+
+end # module test_testset_failfast
