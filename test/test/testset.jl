@@ -1,17 +1,27 @@
+# julia 1.6.0-DEV.1437 commit 68c71f577275a16fffb743b2058afdc2d635068f
 module test_testset_verbose
 
 using Test
 
-if VERSION >= v"1.6.0-DEV.1437"
-    @testset "Verbose 1" verbose = true begin
-        @testset "Verbose 2" begin
-            @test true
-        end
+@testset "Verbose 1" verbose = true begin
+    @testset "Verbose 2" begin
+        @test true
     end
 end
 
 end # module test_testset_verbose
 
+
+# julia 1.9.0-DEV.623 commit 88def1afe16acdfe41b15dc956742359d837ce04
+module test_testset_failfast
+
+using Test
+
+@testset failfast = true begin
+    @test true
+end
+
+end # module test_testset_failfast
 
 
 using Jive
@@ -31,15 +41,3 @@ end
 @testset bar(2)
 
 end # module test_testset_42518
-
-
-module test_testset_failfast
-
-using Test
-
-# julia 1.9.0-DEV.623 commit 88def1afe16acdfe41b15dc956742359d837ce04
-@testset failfast = true begin
-    @test true
-end
-
-end # module test_testset_failfast

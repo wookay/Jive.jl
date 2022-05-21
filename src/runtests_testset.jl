@@ -4,6 +4,20 @@
 
 using .Test: AbstractTestSet, DefaultTestSet
 
+function compat_default_testset(args...; kwargs...)::DefaultTestSet
+    if VERSION < v"1.9.0-DEV.623"
+        ignore_keys = Vector{Symbol}()
+        push!(ignore_keys, :failfast)
+        if VERSION < v"1.6.0-DEV.1437"
+            push!(ignore_keys, :verbose)
+        end
+        filtered_kwargs = filter(kv -> !(first(kv) in ignore_keys), kwargs)
+        DefaultTestSet(args...; filtered_kwargs...)
+    else
+        DefaultTestSet(args...; kwargs...)
+    end
+end
+
 mutable struct JiveTestSet <: AbstractTestSet
     compile_time_start::UInt64
     recompile_time_start::UInt64
@@ -13,7 +27,7 @@ mutable struct JiveTestSet <: AbstractTestSet
     elapsed_time::UInt64
     default::DefaultTestSet
     function JiveTestSet(args...; kwargs...)
-        new(UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), DefaultTestSet(args...; kwargs...))
+        new(UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), compat_default_testset(args...; kwargs...))
     end
 end
 
