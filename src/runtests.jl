@@ -31,6 +31,7 @@ cumulative_compile_timing, cumulative_compile_time_ns = begin
 end
 
 jive_stop_on_failure = false
+jive_testset_filter = nothing
 
 include("runtests_testset.jl")
 include("runtests_distributed_run.jl")
@@ -113,10 +114,11 @@ end
              skip::Union{Vector{Any},Vector{String}} = String[],
              node1::Union{Vector{Any},Vector{String}} = [],
              targets::Vector{String} = ARGS,
+             testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
              enable_distributed::Bool = true,
              stop_on_failure::Bool = false,
              context::Union{Nothing,Module} = nothing,
-             verbose::Bool = true)
+             verbose::Bool = true)::Total
 
 run the test files from the specific directory.
 
@@ -124,6 +126,7 @@ run the test files from the specific directory.
 * `skip`: files or directories to skip.
 * `node1`: run on node 1 during for the distributed tests.
 * `targets`: filter targets and start. default is `ARGS`.
+* `testset`: filter testset. default is `nothing`.
 * `enable_distributed`: option for distributed.
 * `stop_on_failure`: stop on the failure or error.
 * `context`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
@@ -133,15 +136,18 @@ function runtests(dir::String ;
                   skip::Union{Vector{Any},Vector{String}} = String[],
                   node1::Union{Vector{Any},Vector{String}} = [],
                   targets::Vector{String} = ARGS,
+                  testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
                   enable_distributed::Bool = true,
                   stop_on_failure::Bool = false,
                   context::Union{Nothing,Module} = nothing,
-                  verbose::Bool = true)
-    jive_stop_on_failure = stop_on_failure
+                  verbose::Bool = true)::Total
+    global jive_stop_on_failure = stop_on_failure
+    global jive_testset_filter = build_testset_filter(testset)
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs) || !enable_distributed
-        normal_run(dir, all_tests, start_idx, context, verbose)
+        total = normal_run(dir, all_tests, start_idx, context, verbose)
+        return total
     else
         num_procs = nprocs()
         if isempty(env_jive_procs)
@@ -152,15 +158,24 @@ function runtests(dir::String ;
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose)
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose)
+            return total
         else
-            normal_run(dir, all_tests, start_idx, context, verbose)
+            total = normal_run(dir, all_tests, start_idx, context, verbose)
+            return total
         end
     end
+    # unreachable
 end
 
+build_testset_filter(::Nothing) = nothing
+build_testset_filter(testset::String) = ==(testset)
+build_testset_filter(testset::Vector{String}) = in(testset)
+build_testset_filter(testset::Regex) = (x::String) -> match(testset, x) isa RegexMatch
+build_testset_filter(testset::Base.Callable) = testset
+
 function include_test_file(context::Union{Nothing,Module}, filepath::String)
-    if isnothing(context)
+    if context === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
         Core.eval(m, quote
@@ -177,7 +192,7 @@ function got_anynonpass(tc)::Bool
     any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
     for (idx, subpath) in enumerate(tests)
@@ -196,6 +211,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         jive_stop_on_failure && got_anynonpass(tc) && break
     end
     verbose && jive_report(io, total)
+    return total
 end
 
 function jive_accumulate_testset_data(io::IO, verbose::Bool, total::Total, ts::JiveTestSet)

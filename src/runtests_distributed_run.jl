@@ -13,7 +13,9 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context:
     (ts, buf)
 end
 
-function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context::Union{Nothing,Module}, verbose::Bool)
+function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context::Union{Nothing,Module}, verbose::Bool)::Total
+    global jive_stop_on_failure
+
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "nworkers()", color=:cyan)
     printstyled(io, ": ", nworkers(), ", ")
@@ -117,4 +119,5 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
         GC.gc()
     end
     verbose && jive_report(io, total)
+    return total
 end

@@ -70,4 +70,38 @@ function finish(ts::JiveTestSet)
     jive_finish!(Core.stdout, true, :test, ts)
 end
 
+
+### @testset filter
+
+using .Test: testset_forloop, _check_testset, default_rng, Random
+import .Test: @testset
+
+# compat
+testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
+
+macro testset(name::String, rest_args...)
+    global jive_testset_filter
+    if jive_testset_filter !== nothing
+        !jive_testset_filter(name) && return nothing
+    end
+
+    args = (name, rest_args...)
+    tests = args[end]
+
+    # Determine if a single block or for-loop style
+    if !isa(tests, Expr) || (tests.head !== :for && tests.head !== :block && tests.head != :call)
+        error("Expected function call, begin/end block or for loop as argument to @testset")
+    end
+
+    if VERSION >= v"1.9.0-DEV.623"
+        Test.FAIL_FAST[] = something(tryparse(Bool, get(ENV, "JULIA_TEST_FAILFAST", "false")), false)
+    end
+
+    if tests.head === :for
+        return testset_forloop(args, tests, __source__)
+    else
+        return testset_beginend_call(args, tests, __source__)
+    end
+end
+
 # module Jive
