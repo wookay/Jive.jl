@@ -320,36 +320,31 @@ function jive_print_counts(io::IO, ts::JiveTestSet, tc)
 
     printed = false
     if passes > 0
-        print(io, repeat(' ', 4))
-        printstyled(io, "Pass:", " "; bold=true, color=:green)
+        printstyled(io, "    Pass: "; bold=true, color=:green)
         printstyled(io, passes, color=:green)
         printed = true
     end
 
     if fails > 0
-        print(io, repeat(' ', 4))
-        printstyled(io, "Fail:", " "; bold=true, color=Base.error_color())
+        printstyled(io, "    Fail: "; bold=true, color=Base.error_color())
         printstyled(io, fails, color=Base.error_color())
         printed = true
     end
 
     if errors > 0
-        print(io, repeat(' ', 4))
-        printstyled(io, "Error:", " "; bold=true, color=Base.error_color())
+        printstyled(io, "    Error: "; bold=true, color=Base.error_color())
         printstyled(io, errors, color=Base.error_color())
         printed = true
     end
 
     if broken > 0
-        print(io, repeat(' ', 4))
-        printstyled(io, "Broken:", " "; bold=true, color=Base.warn_color())
+        printstyled(io, "    Broken: "; bold=true, color=Base.warn_color())
         printstyled(io, broken, color=Base.warn_color())
         printed = true
     end
 
     if skipped > 0
-        print(io, repeat(' ', 4))
-        printstyled(io, "Skip:", " "; bold=true, color=Base.warn_color())
+        printstyled(io, "    Skip: "; bold=true, color=Base.warn_color())
         printstyled(io, skipped, color=Base.warn_color())
         printed = true
     end
