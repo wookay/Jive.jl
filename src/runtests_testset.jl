@@ -73,11 +73,13 @@ end
 
 ### @testset filter
 
-using .Test: testset_forloop, _check_testset, default_rng, Random
+using .Test: Random, Error, testset_forloop, _check_testset, default_rng
 import .Test: @testset
 
 # compat
 testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
+trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_failure_break : (err) -> nothing
+FailFastError = VERSION >= v"1.9.0-DEV.623" ? Test.FailFastError : ErrorException
 
 macro testset(name::String, rest_args...)
     global jive_testset_filter
