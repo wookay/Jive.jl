@@ -63,7 +63,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
-                            jive_accumulate_testset_data(io, verbose, total, ts)
+                            tc = jive_accumulate_testset_data(io, verbose, total, ts)
                             if jive_stop_on_failure && got_anynonpass(tc)
                                 stop = true
                                 break
@@ -84,7 +84,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
             (ts, buf) = fetch(f)
             verbose && print(io, String(take!(buf)))
-            jive_accumulate_testset_data(io, verbose, total, ts)
+            tc = jive_accumulate_testset_data(io, verbose, total, ts)
             jive_stop_on_failure && got_anynonpass(tc) && break
         end
     catch err

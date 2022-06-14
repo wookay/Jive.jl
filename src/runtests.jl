@@ -207,7 +207,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         description = jive_testset_description(numbering)
         ts = JiveTestSet(description)
         jive_lets_dance(io, verbose, ts, context, filepath)
-        jive_accumulate_testset_data(io, verbose, total, ts)
+        tc = jive_accumulate_testset_data(io, verbose, total, ts)
         jive_stop_on_failure && got_anynonpass(tc) && break
     end
     verbose && jive_report(io, total)
@@ -225,6 +225,7 @@ function jive_accumulate_testset_data(io::IO, verbose::Bool, total::Total, ts::J
     total.n_errors  += tc.errors  + tc.c_errors
     total.n_broken  += tc.broken  + tc.c_broken
     total.n_skipped += tc.skipped + tc.c_skipped
+    tc
 end
 
 function jive_testset_description(numbering)::String
