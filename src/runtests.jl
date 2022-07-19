@@ -9,7 +9,7 @@ using Printf: Printf
 # compat
 cumulative_compile_timing, cumulative_compile_time_ns = begin
     # julia commit 7074f04228d6149c2cefaa16064f30739f31da13
-    if VERSION >= v"1.9.0-DEV.416" && isdefined(Base, :cumulative_compile_timing)
+    if isdefined(Base, :cumulative_compile_timing)
         (Base.cumulative_compile_timing, Base.cumulative_compile_time_ns)
     else
         if VERSION >= v"1.6.0-DEV.1819" && isdefined(Base, :cumulative_compile_time_ns_before)
