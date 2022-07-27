@@ -25,7 +25,7 @@ end # module test_testset_failfast
 
 
 using Jive
-@If  VERSION >= v"1.8.0-DEV.809" module test_testset_42518
+@If VERSION >= v"1.8.0-DEV.809" module test_testset_42518
 
 using Test
 

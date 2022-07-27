@@ -91,7 +91,7 @@ macro testset(name::String, rest_args...)
     tests = args[end]
 
     # Determine if a single block or for-loop style
-    if !isa(tests, Expr) || (tests.head !== :for && tests.head !== :block && tests.head != :call)
+    if !isa(tests, Expr) || (tests.head !== :for && tests.head !== :block && tests.head !== :call && tests.head !== :let)
         error("Expected function call, begin/end block or for loop as argument to @testset")
     end
 
@@ -101,6 +101,94 @@ macro testset(name::String, rest_args...)
 
     if tests.head === :for
         return testset_forloop(args, tests, __source__)
+    elseif tests.head === :let
+        return Test.testset_context(args, tests, __source__)
+    else
+        return testset_beginend_call(args, tests, __source__)
+    end
+end
+
+
+### compat @testset let
+if VERSION >= v"1.9.0-DEV.1055"
+    testset_context = Test.testset_context
+else
+struct Fail <: Test.Result
+    orig_expr::String
+    data::Union{Nothing, String}
+    value::String
+    context::Union{Nothing, String}
+    source::LineNumberNode
+    message_only::Bool
+    function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool)
+        return new(test_type,
+            string(orig_expr),
+            data === nothing ? nothing : string(data),
+            string(isa(data, Type) ? typeof(value) : value),
+            context,
+            source,
+            message_only)
+    end
+end
+
+"""
+    ContextTestSet
+
+Passes test failures through to the parent test set, while adding information
+about a context object that is being tested.
+"""
+struct ContextTestSet <: AbstractTestSet
+    parent_ts::AbstractTestSet
+    context_sym::Symbol
+    context::Any
+end
+
+function ContextTestSet(sym::Symbol, @nospecialize(context))
+    ContextTestSet(get_testset(), sym, context)
+end
+record(c::ContextTestSet, t) = record(c.parent_ts, t)
+function record(c::ContextTestSet, t::Fail)
+    context = string(c.context_sym, " = ", c.context)
+    context = t.context === nothing ? context : string(t.context, "\n              ", context)
+    record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, t.message_only))
+end
+
+"""
+Generate the code for an `@testset` with a `let` argument.
+"""
+function testset_context(args, tests, source)
+    desc, testsettype, options = Test.parse_testset_args(args[1:end-1])
+    if desc !== nothing || testsettype !== nothing
+        # Reserve this syntax if we ever want to allow this, but for now,
+        # just do the transparent context test set.
+        error("@testset with a `let` argument cannot be customized")
+    end
+
+    assgn = tests.args[1]
+    if !isa(assgn, Expr) || assgn.head !== :(=)
+        error("`@testset let` must have exactly one assignment")
+    end
+    assignee = assgn.args[1]
+
+    tests.args[2] = quote
+        $push_testset($(ContextTestSet)($(QuoteNode(assignee)), $assignee; $options...))
+        try
+            $(tests.args[2])
+        finally
+            $pop_testset()
+        end
+    end
+
+    return esc(tests)
+end # function testset_context(args, tests, source)
+end # if VERSION >= v"1.9.0-DEV.1055"
+
+macro testset(tests::Expr)
+    args = (tests,)
+    if tests.head === :for
+        return testset_forloop(args, tests, __source__)
+    elseif tests.head === :let
+        return testset_context(args, tests, __source__)
     else
         return testset_beginend_call(args, tests, __source__)
     end
