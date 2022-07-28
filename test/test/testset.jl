@@ -41,3 +41,15 @@ end
 @testset bar(2)
 
 end # module test_testset_42518
+
+
+module test_testset_let
+
+using Test
+using Jive
+
+@testset let (fname, events) = ("fpath", [])
+    @test fname == "fpath"
+end
+
+end # module test_testset_let

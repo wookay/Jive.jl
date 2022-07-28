@@ -1,5 +1,5 @@
 # julia 1.9.0-DEV.1055 commit ff1b563e3c6f3ee419de0f792c5ff42744448f1c
-module test_testset_let
+module test_errors_testset_let
 
 using Test
 using Jive
@@ -9,4 +9,4 @@ using Jive
     @test v[2] == 3
 end
 
-end # module test_testset_let
+end # module test_errors_testset_let
