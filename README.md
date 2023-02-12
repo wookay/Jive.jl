@@ -207,6 +207,7 @@ using Jive
 # `@__REPL__`
 
 * [`test/jive/__REPL__`](https://github.com/wookay/Jive.jl/blob/master/test/jive/__REPL__)
+* Use [Infiltrator.jl](https://github.com/JuliaDebug/Infiltrator.jl) to debug the local scope variables.
 
 ```
 ~/.julia/dev/Jive/test/jive/__REPL__ $ cat test.jl
