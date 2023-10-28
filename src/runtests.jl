@@ -35,6 +35,7 @@ jive_testset_filter = nothing
 
 include("runtests_testset.jl")
 include("runtests_distributed_run.jl")
+include("compat.jl")
 
 mutable struct Total
     compile_time::UInt64
