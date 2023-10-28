@@ -231,7 +231,7 @@ julia> ^D  # Ctrl + D to exit the REPL
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [docs-latest-url]: https://wookay.github.io/docs/Jive.jl/
 
-[actions-img]: https://github.com/wookay/Jive.jl/workflows/CI/badge.svg
+[actions-img]: https://github.com/wookay/Jive.jl/actions/workflows/actions.yml/badge.svg
 [actions-url]: https://github.com/wookay/Jive.jl/actions
 
 [codecov-img]: https://codecov.io/gh/wookay/Jive.jl/branch/master/graph/badge.svg
