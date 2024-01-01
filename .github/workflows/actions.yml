@@ -7,15 +7,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.9.3]
+        julia-version: [1.10.0]
         julia-arch: [x64]
         os: [ubuntu-latest, macos-latest]
         include:
           - julia-version: nightly
-            os: ubuntu-latest
-          - julia-version: 1.8.5
-            os: ubuntu-latest
-          - julia-version: 1.7.3
             os: ubuntu-latest
           - julia-version: 1.6.7
             os: ubuntu-latest
@@ -52,22 +48,15 @@ jobs:
              julia --project=.. -e 'using Pkg; Pkg.add("Revise"); p1 = @async include("revise.jl"); Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); sleep(1); exit(0); end; wait(p1)' example
              cd ../../../
 
-  TestOnWindows:
+  RunForWindows:
     needs: Test
+    if: github.event.ref == 'refs/heads/master'
     runs-on: windows-latest
-    strategy:
-      matrix:
-        version:
-          - '1.9.3'
-        os:
-          - windows-latest
-        arch:
-          - x64
     steps:
       - uses: actions/checkout@master
-      - uses: julia-actions/setup-julia@latest
       - name: runtests
         run: |
+             julia --version
              julia --project=. -e 'using Pkg; Pkg.test()'
 
   Coverage:
@@ -79,7 +68,6 @@ jobs:
       - name: coverage
         run: |
              julia --version
-                             julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
-             JIVE_PROCS=auto julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
-                             julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
+             julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
+             julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
       - uses: codecov/codecov-action@v1
