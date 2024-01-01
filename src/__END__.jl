@@ -19,14 +19,6 @@ end
 `throw(Jive.EndError())`
 """
 macro __END__()
-    @eval function Base.showerror(io::IO, ex::LoadError, bt; backtrace=true)
-        if isenderror(ex)
-            printstyled(io, "@__END__", color=:cyan)
-            print(io, " at ", basename(ex.file), ":", ex.line)
-        else
-            print(io, "Error while loading expression starting at ", ex.file, ":", ex.line)
-        end
-    end
     throw(EndError())
 end
 

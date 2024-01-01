@@ -34,7 +34,7 @@ jobs:
 
       - name: runtests - dev .
         run: |
-             julia -e 'using Pkg; pkg"dev ."'
+             julia -e 'using Pkg; Pkg.develop(path=".")'
              cd test
                              julia --color=yes -pauto runtests.jl jive/s jive/m start=2
                              julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s", "jive/__REPL__"], node1=["jive/m"])'
