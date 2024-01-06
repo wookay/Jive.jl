@@ -48,16 +48,23 @@ using Test
 using .TestTools
 push!(TestTools.skip_testsets, "testset2")
 
+global count_tested = 0
+
 @testset "testset1" begin
 @test true
+global count_tested += 1
 end
 
 @testset "testset2" begin
 @test true
+global count_tested += 1
 end
 
 @testset "testset3" begin
 @test true
+global count_tested += 1
 end
+
+@test count_tested == 2
 
 end # module test_skip_testsets
