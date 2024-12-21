@@ -17,57 +17,11 @@ mutable struct JiveTestSet <: AbstractTestSet
     end
 end
 
-using .Test: TESTSET_PRINT_ENABLE, scrub_backtrace
 import .Test: record, finish
-
-# import .Test: record
-function record(ts::JiveTestSet, t::Test.Pass)
-    ts.default.n_passed += 1
-    t
+function record(ts::JiveTestSet, t::Union{Test.Pass, Test.Broken, Test.Fail, Test.Error, Test.LogTestFailure, AbstractTestSet})
+    record(ts.default, t)
 end
 
-function record(ts::JiveTestSet, t::Test.Broken)
-    push!(ts.default.results, t)
-    t
-end
-
-extract_file(source::LineNumberNode) = extract_file(source.file)
-extract_file(file::Symbol) = string(file)
-extract_file(::Nothing) = nothing
-
-function record(ts::JiveTestSet, t::Test.LogTestFailure)
-    if TESTSET_PRINT_ENABLE[]
-        printstyled(ts.default.description, ": ", color=:white)
-        print(t)
-        Base.show_backtrace(stdout, scrub_backtrace(backtrace(), ts.default.file, extract_file(t.source)))
-        println()
-    end
-    # Hack: convert to `Fail` so that test summarization works correctly
-    push!(ts.default.results, Test.Fail(:test, t.orig_expr, t.logs, nothing, nothing, t.source, false))
-    return t
-end
-
-function record(ts::JiveTestSet, t::Union{Test.Fail, Test.Error})
-    if TESTSET_PRINT_ENABLE[]
-        print(ts.default.description, ": ")
-        # don't print for interrupted tests
-        if !(t isa Test.Error) || t.test_type !== :test_interrupted
-            print(t)
-            if !isa(t, Test.Error) # if not gets printed in the show method
-                Base.show_backtrace(stdout, compat_scrub_backtrace(backtrace(), ts.default, compat_extract_file(t.source)))
-            end
-            println()
-        end
-    end
-    push!(ts.default.results, t)
-    return t
-end
-
-function record(ts::JiveTestSet, t::AbstractTestSet)
-    push!(ts.default.results, t)
-end
-
-# import .Test: finish
 function finish(ts::JiveTestSet)
     jive_finish!(Core.stdout, true, :test, ts)
 end
