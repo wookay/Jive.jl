@@ -31,6 +31,22 @@ function record(ts::JiveTestSet, t::Test.Broken)
     t
 end
 
+extract_file(source::LineNumberNode) = extract_file(source.file)
+extract_file(file::Symbol) = string(file)
+extract_file(::Nothing) = nothing
+
+function record(ts::JiveTestSet, t::Test.LogTestFailure)
+    if TESTSET_PRINT_ENABLE[]
+        printstyled(ts.default.description, ": ", color=:white)
+        print(t)
+        Base.show_backtrace(stdout, scrub_backtrace(backtrace(), ts.default.file, extract_file(t.source)))
+        println()
+    end
+    # Hack: convert to `Fail` so that test summarization works correctly
+    push!(ts.default.results, Test.Fail(:test, t.orig_expr, t.logs, nothing, nothing, t.source, false))
+    return t
+end
+
 function record(ts::JiveTestSet, t::Union{Test.Fail, Test.Error})
     if TESTSET_PRINT_ENABLE[]
         print(ts.default.description, ": ")
