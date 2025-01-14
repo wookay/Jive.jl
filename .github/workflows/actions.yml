@@ -13,14 +13,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.10.0]
+        # Current stable release: v1.11.3 (January 21, 2025)
+        julia-version: [1.11.3]
         julia-arch: [x64]
         os: [ubuntu-latest, macos-latest]
         include:
           - julia-version: nightly
             os: ubuntu-latest
+          - julia-version: 1.10.8    # LTS
+            os: ubuntu-latest
           - julia-version: 1.6.7
-            os: ubuntu-latest 
+            os: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: julia-actions/setup-julia@v1
