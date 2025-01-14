@@ -30,7 +30,7 @@ end
 ### @testset filter
 
 using .Test: Random, Error, testset_forloop, _check_testset, default_rng
-isdefined(Test, :get_rng) && using .Test: get_rng, set_rng!
+VERSION >= v"1.12.0-DEV.1812" && isdefined(Test, :get_rng) && using .Test: get_rng, set_rng!
 import .Test: @testset
 
 macro testset(name::String, rest_args...)
