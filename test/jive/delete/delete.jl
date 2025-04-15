@@ -16,5 +16,9 @@ f(::Int) = 42
 @test_throws ArgumentError("Collection is empty, must contain exactly 1 element") Jive.delete(f, Tuple{})
 @test_throws MethodError(f, (), Base.get_world_counter()) f()
 @test f(0) == 42
+Jive.delete(f, Tuple{Int})
+
+f(::Int, ::String) = 42
+Jive.delete(f, Tuple{Int, String})
 
 end # module test_jive_delete
