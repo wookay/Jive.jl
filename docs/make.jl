@@ -21,5 +21,7 @@ makedocs(
         "@useinside" => "useinside.md",
         "`@__END__`" => "END.md",
         "`@__REPL__`" => "REPL.md",
+        "Jive.delete" => "delete.md",
+        "sprints" => "sprints.md",
     ],
 )

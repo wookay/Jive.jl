@@ -24,4 +24,10 @@ include("runtests.jl")
 export watch
 include("watch.jl")
 
+# Jive.delete
+include("delete.jl")
+
+export sprint_plain, sprint_colored
+include("sprints.jl")
+
 end # module Jive
