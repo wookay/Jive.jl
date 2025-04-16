@@ -18,6 +18,8 @@
   - [@useinside](#useinside)
   - [`@__END__`](#__end__)
   - [`@__REPL__`](#__repl__)
+  - [Jive.delete](#Jive.delete)
+  - [sprints](#sprints)
 
 
 # runtests
@@ -226,6 +228,14 @@ julia> ^D  # Ctrl + D to exit the REPL
 ┌ Info: a
 └   a = 3
 ```
+
+# Jive.delete
+Make function `f` uncallable.
+same for `Base.delete_method(only(methods(f, types)))`
+
+# sprints
+- `sprint_plain` : get `Base.show` output of the `x`
+- `sprint_colored` : get `Base.show` output of the `x` with color
 
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
