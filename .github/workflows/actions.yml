@@ -33,47 +33,9 @@ jobs:
         version: ${{ matrix.julia-version }}
     - uses: julia-actions/cache@v1
     - uses: julia-actions/julia-buildpkg@v1
-    # - uses: julia-actions/julia-runtest@v1
-    - name: runtests - basic
-      run: |
-           true
-                           julia --project=.         -e 'using Pkg; Pkg.test()'
-           JIVE_PROCS=auto julia --project=.         -e 'using Pkg; Pkg.test()'
-           JIVE_PROCS=0    julia --project=.  -pauto -e 'using Pkg; Pkg.test()'
-
-           cd test
-                           julia --project=..        runtests.jl jive
-                           julia --project=..        runtests.jl jive/s jive/m start=2
-           cd ..
-
-    - name: runtests - dev .
-      run: |
-           julia -e 'using Pkg; Pkg.develop(path=".")'
-           cd test
-                           julia --color=yes -pauto runtests.jl jive/s jive/m start=2
-                           julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["Example", "errors", "jive/onlyonce/heavy.jl", "jive/__END__/included.jl", "jive/s", "jive/__REPL__"], node1=["jive/m"])'
-                           julia --color=yes -pauto -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], node1=["jive/m"])' || true
-                           julia --color=yes        -e 'using Jive; runtests(@__DIR__, skip=["jive/__END__/included.jl", "jive/__REPL__"], targets=["errors", "jive"], stop_on_failure=true)' || true
-           cd ..
-
-    - name: revise
-      run: |
-           cd test/Example/test/
-           julia --project=.. -e 'using Pkg; Pkg.add("Revise"); p1 = @async include("revise.jl"); Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); sleep(1); exit(0); end; wait(p1)' example
-           cd ../../../
-
-  RunForWindows:
-    needs: Test
-    if: github.event.ref == 'refs/heads/master'
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: julia-actions/setup-julia@v1
-    - uses: julia-actions/cache@v1
-    - uses: julia-actions/julia-buildpkg@v1
     - uses: julia-actions/julia-runtest@v1
 
-  Coverage:
+  RunMoreTests:
     needs: Test
     if: github.event.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
@@ -83,9 +45,57 @@ jobs:
     - uses: julia-actions/cache@v1
     - uses: julia-actions/julia-buildpkg@v1
     # - uses: julia-actions/julia-runtest@v1
-    - name: coverage
+    - name: ARGS to filter the targets
       run: |
-           julia --version
-           julia --project=. -e 'using Pkg; Pkg.test(coverage=true)'
-           julia --project=. -e 'using Pkg; Pkg.add("Coverage"); using Coverage; cov = Coverage.process_folder(); mkdir("coverage"); Coverage.LCOV.writefile("coverage/lcov.info", cov)'
-    - uses: codecov/codecov-action@v1
+           cd test/
+                           julia --project=.. runtests.jl jive
+                           julia --project=.. runtests.jl jive/s jive/m start=2
+           cd ../
+
+    - name: enable_distributed, JIVE_PROCS
+      run: |
+           cd test/
+                           julia --project=.. -pauto -e 'using Jive; runtests(@__DIR__, targets=["test"])'
+                           julia --project=.. -pauto -e 'using Jive; runtests(@__DIR__, targets=["test"], enable_distributed=false)'
+           JIVE_PROCS=auto julia --project=..        -e 'using Pkg; Pkg.test(; test_args=["test"])'
+           JIVE_PROCS=0    julia --project=.. -pauto -e 'using Pkg; Pkg.test(; test_args=["test"])'
+           cd ../
+
+    - name: stop_on_failure
+      run: |
+           cd test/
+                           julia --project=..        -e 'using Jive; runtests(@__DIR__, targets=["errors"], stop_on_failure=true)' || true
+                           julia --project=..        -e 'using Jive; runtests(@__DIR__, targets=["errors"])' || true
+           cd ../
+
+    - name: using Revise
+      run: |
+           cd test/Example/test/
+           julia --project=.. -e 'using Pkg; Pkg.develop(path="../../../"); Pkg.add("Revise"); p1 = @async include("revise.jl"); Timer(3) do t; touch("example/test3.jl"); sleep(0.5); rm("example/test3.jl"); sleep(1); exit(0); end; wait(p1)' example
+           cd ../../../
+
+  RunForWindows:
+    needs: RunMoreTests
+    if: github.event.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+
+  Coverage:
+    needs: RunMoreTests
+    if: github.event.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
