@@ -4,6 +4,8 @@ using Test
 using Jive
 
 total = runtests(@__DIR__, targets=["target3"], enable_distributed=false, verbose=false, testset=nothing)
+@test total isa Jive.Total
+@test total.elapsed_time >= 0
 @test total.n_passes == 2
 
 total = runtests(@__DIR__, targets=["target3"], enable_distributed=false, verbose=false, testset="hello")
