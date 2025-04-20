@@ -12,3 +12,10 @@ using Jive # @useinside
 # ...
 end
 ```
+
+`Main` is the module to evaluate in.
+```julia
+@useinside Main module test_pkgs_flux_optimise
+# ...
+end
+```
