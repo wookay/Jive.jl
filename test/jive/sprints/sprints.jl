@@ -1,4 +1,5 @@
-module test_jive_sprints
+using Jive
+@useinside Main module test_jive_sprints
 
 using Test
 using Jive # sprint_plain sprint_colored
@@ -12,8 +13,8 @@ function Base.show(io::IO, mime::MIME"text/plain", foo::Foo)
 end
 
 foo = Foo()
-@test endswith(string(foo),       "test_jive_sprints.Foo()")
-@test endswith(sprint(show, foo), "test_jive_sprints.Foo()")
+@test string(foo) == "Foo()"
+@test sprint(show, foo) == "Foo()"
 @test sprint_plain(foo)   == "Foo()"
 @test sprint_colored(foo) == "\e[92mFoo\e[39m()"
 
