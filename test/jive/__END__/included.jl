@@ -1,4 +1,8 @@
+if !@isdefined(included_stack)
+    printstyled("you need to run end_test.jl first\n", color = :red)
+end
+
 using Jive
-push!(stack, 10)
+push!(included_stack, 10)
 @__END__
-push!(stack, 20)
+push!(included_stack, 20)

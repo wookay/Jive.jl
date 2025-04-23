@@ -9,7 +9,7 @@ module Skipped
 expressions = []
 end # Jive.Skipped
 
-isjiveskip() = get(ENV, "JIVE_SKIP", "1") == "1"
+is_enabled_jive_skip_macro() = get(ENV, "JIVE_ENABLE_SKIP_MACRO", "1") == "1"
 
 """
     @skip
@@ -17,7 +17,7 @@ isjiveskip() = get(ENV, "JIVE_SKIP", "1") == "1"
 skip the expression.
 """
 macro skip(expr::Expr)
-    if isjiveskip()
+    if is_enabled_jive_skip_macro()
         typ = expr.head
         if typ in (:module, :struct)
             name = expr.args[2]
@@ -39,7 +39,7 @@ macro skip(expr::Expr)
 end
 
 macro skip(node::QuoteNode)
-    if isjiveskip()
+    if is_enabled_jive_skip_macro()
         push!(Skipped.expressions, node.value)
         nothing
     else
@@ -48,7 +48,7 @@ macro skip(node::QuoteNode)
 end
 
 macro skip(sym::Symbol)
-    if isjiveskip()
+    if is_enabled_jive_skip_macro()
         if sym === :nothing
             push!(Skipped.expressions, nothing)
         else
@@ -61,7 +61,7 @@ macro skip(sym::Symbol)
 end
 
 macro skip(val::Any)
-    if isjiveskip()
+    if is_enabled_jive_skip_macro()
         push!(Skipped.expressions, val)
         nothing
     else

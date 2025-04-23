@@ -14,7 +14,7 @@ end
 @test Jive.Skipped.expressions == [:function =>:want_to_skip]
 
 
-ENV["JIVE_SKIP"] = "0"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "0"
 
 @skip function non_skip()
 end
@@ -22,6 +22,6 @@ end
 @test isdefined(@__MODULE__, :non_skip)
 @test Jive.Skipped.expressions == [:function=>:want_to_skip]
 
-ENV["JIVE_SKIP"] = "1"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "1"
 
 end # module test_jive_skip_functions

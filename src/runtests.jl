@@ -144,6 +144,10 @@ function runtests(dir::String ;
                   verbose::Bool = true)::Total
     global jive_stop_on_failure = stop_on_failure
     global jive_testset_filter = build_testset_filter(testset)
+    env_jive_skip = get(ENV, "JIVE_SKIP", "")
+    if !isempty(env_jive_skip)
+        skip = split(env_jive_skip, ",")
+    end
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs) || !enable_distributed

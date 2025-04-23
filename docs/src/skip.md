@@ -23,4 +23,4 @@ end
 @skip println(1+2)
 ```
 
-  - Change to do not skip the code: `ENV["JIVE_SKIP"] = "0"`
+  - Change to do not skip the code: `ENV["JIVE_ENABLE_SKIP_MACRO"] = "0"`

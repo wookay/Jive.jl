@@ -11,17 +11,17 @@ print(:dont_print_it)
 end
 
 @skip want_to_skip()
-@test Jive.Skipped.expressions == [:call=>:want_to_skip]
+@test Jive.Skipped.expressions == [:call => :want_to_skip]
 
 
-ENV["JIVE_SKIP"] = "0"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "0"
 
 function non_skip()
 end
 
 @skip non_skip()
-@test Jive.Skipped.expressions == [:call=>:want_to_skip]
+@test Jive.Skipped.expressions == [:call => :want_to_skip]
 
-ENV["JIVE_SKIP"] = "1"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "1"
 
 end # module test_jive_skip_calls

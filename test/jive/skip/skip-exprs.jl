@@ -46,7 +46,7 @@ end
 
 
 empty!(Jive.Skipped.expressions)
-ENV["JIVE_SKIP"] = "0"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "0"
 
 @skip if 10 > 2
 end
@@ -62,6 +62,6 @@ end
 @test isempty(Jive.Skipped.expressions)
 @test isdefined(@__MODULE__, :a)
 
-ENV["JIVE_SKIP"] = "1"
+ENV["JIVE_ENABLE_SKIP_MACRO"] = "1"
 
 end # module test_jive_skip_exprs
