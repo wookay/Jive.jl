@@ -4,7 +4,7 @@ keywords = ["distributed", "test"]
 license = "MIT"
 desc = "some useful steps in tests"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
-version = "0.3.2-DEV"
+version = "0.3.2"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"

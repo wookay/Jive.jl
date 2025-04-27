@@ -20,7 +20,7 @@ jobs:
         include:
           - julia-version: nightly
             os: ubuntu-latest
-          - julia-version: 1.12.0-beta1 # (April 2, 2025)
+          - julia-version: 1.12.0-beta2 # (April 25, 2025)
             os: ubuntu-latest
           - julia-version: 1.10.9       # LTS
             os: ubuntu-latest
@@ -50,6 +50,12 @@ jobs:
            cd test/
                            julia --project=.. runtests.jl jive
                            julia --project=.. runtests.jl jive/s jive/m start=2
+           cd ../
+
+    - name: JIVE_SKIP
+      run: |
+           cd test/
+                           JIVE_SKIP=Example,errors,jive/onlyonce/heavy.jl,jive/__END__/included.jl,jive/__REPL__ julia --project=.. runtests.jl
            cd ../
 
     - name: enable_distributed, JIVE_PROCS
