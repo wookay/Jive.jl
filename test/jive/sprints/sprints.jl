@@ -7,12 +7,16 @@ using Jive # sprint_plain sprint_colored
 struct Foo
 end
 
+foo = Foo()
+
+@test Base.showable(MIME"text/plain"(), foo)
+@test sprint_plain(foo) == "Foo()"
+
 function Base.show(io::IO, mime::MIME"text/plain", foo::Foo)
     printstyled(io, "Foo", color = :light_green)
     print(io, "()")
 end
 
-foo = Foo()
 @test string(foo) == "Foo()"
 @test sprint(show, foo) == "Foo()"
 @test sprint_plain(foo)   == "Foo()"
@@ -50,5 +54,15 @@ if VERSION >= v"1.8"
     x = eval(Meta.parse("""[;]"""))  # [;]
     @test string(x) == sprint(show, x) == sprint_plain(x) == sprint_colored(x)
 end
+
+@test !(Base.showable(MIME"text/html"(), foo))
+@test_throws MethodError sprint_html(foo)
+
+function Base.show(io::IO, mime::MIME"text/html", foo::Foo)
+    Base.show(io, MIME"text/plain"(), foo)
+end
+
+@test Base.showable(MIME"text/html"(), foo)
+@test sprint_html(foo) == "Foo()"
 
 end # module test_jive_sprints

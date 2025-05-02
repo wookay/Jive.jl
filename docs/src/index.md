@@ -237,5 +237,6 @@ Make function `f` uncallable.
 same for `Base.delete_method(only(methods(f, types)))`
 
 # sprints
-- `sprint_plain` : get `Base.show` output of the `x`
-- `sprint_colored` : get `Base.show` output of the `x` with color
+- `sprint_plain` : get `Base.show` text/plain output of the `x`
+- `sprint_colored` : get `Base.show` text/plain output of the `x` with color
+- `sprint_html` : get `Base.show` text/html output of the `x`
