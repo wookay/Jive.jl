@@ -92,32 +92,45 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
                         push!(filters, filterpath)
                     end
                 end
-            end
+            end # for arg in targets
         end
     end
     all_files = Vector{String}()
-    for (root, dirs, files) in walkdir(dir)
-        for filename in files
-            !endswith(filename, ".jl") && continue
-            root == dir && "runtests.jl" == filename && continue
-            filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
-            any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
-            !isempty(filters) && !any(filterpath -> startswith(filepath, filterpath), filters) && continue
-            push!(all_files, filepath)
-        end
+    if isempty(filters)
+        for (root, dirs, files) in walkdir(dir)
+            for filename in files
+                !endswith(filename, ".jl") && continue
+                root == dir && "runtests.jl" == filename && continue
+                filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
+                any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
+                push!(all_files, filepath)
+            end
+        end # for (root, dirs, files) in walkdir(dir)
+    else
+        for filterpath in filters
+            for (root, dirs, files) in walkdir(dir)
+                for filename in files
+                    !endswith(filename, ".jl") && continue
+                    root == dir && "runtests.jl" == filename && continue
+                    filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
+                    any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
+                    startswith(filepath, filterpath) && push!(all_files, filepath)
+                end
+            end # for (root, dirs, files) in walkdir(dir)
+        end # for filterpath in filters
     end
     (all_files, start_idx)
 end
 
 """
     runtests(dir::String ;
-             skip::Union{Vector{Any},Vector{String}} = String[],
-             node1::Union{Vector{Any},Vector{String}} = [],
-             targets::Vector{String} = ARGS,
-             testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
+             skip::Union{Vector{Any},Vector{<: AbstractString}} = String[],
+             node1::Union{Vector{Any},Vector{<: AbstractString}} = String[],
+             targets::Vector{<: AbstractString} = ARGS,
+             testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
              enable_distributed::Bool = true,
              failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
-             context::Union{Nothing,Module} = nothing,
+             context::Union{Nothing, Module} = nothing,
              verbose::Bool = true)::Total
 
 run the test files from the specific directory.
@@ -133,20 +146,20 @@ run the test files from the specific directory.
 * `verbose`: print details of test execution
 """
 function runtests(dir::String ;
-                  skip::Union{Vector{Any},Vector{String}} = String[],
-                  node1::Union{Vector{Any},Vector{String}} = [],
-                  targets::Vector{String} = ARGS,
-                  testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
+                  skip::Union{Vector{Any},Vector{<: AbstractString}} = String[],
+                  node1::Union{Vector{Any},Vector{<: AbstractString}} = String[],
+                  targets::Vector{<: AbstractString} = ARGS,
+                  testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
                   enable_distributed::Bool = true,
                   failfast::Bool = compat_get_bool_env("JULIA_TEST_FAILFAST", false),
-                  context::Union{Nothing,Module} = nothing,
+                  context::Union{Nothing, Module} = nothing,
                   verbose::Bool = true)::Total
     global jive_testset_filter = build_testset_filter(testset)
     env_jive_skip = get(ENV, "JIVE_SKIP", "")
     if !isempty(env_jive_skip)
         skip = split(env_jive_skip, ",")
     end
-    (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
+    (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), Vector{String}(targets))
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     FAIL_FAST[] = failfast
     if ("0" == env_jive_procs) || !enable_distributed
@@ -173,12 +186,12 @@ function runtests(dir::String ;
 end
 
 build_testset_filter(::Nothing) = nothing
-build_testset_filter(testset::String) = ==(testset)
-build_testset_filter(testset::Vector{String}) = in(testset)
-build_testset_filter(testset::Regex) = (x::String) -> match(testset, x) isa RegexMatch
+build_testset_filter(testset::AbstractString) = ==(testset)
+build_testset_filter(testset::Vector{<: AbstractString}) = in(testset)
+build_testset_filter(testset::Regex) = (x::AbstractString) -> match(testset, x) isa RegexMatch
 build_testset_filter(testset::Base.Callable) = testset
 
-function include_test_file(context::Union{Nothing,Module}, filepath::String)
+function include_test_file(context::Union{Nothing, Module}, filepath::String)
     if context === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
@@ -254,7 +267,7 @@ function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, m
     println(io)
 end
 
-function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context::Union{Nothing,Module}, filepath::String)
+function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context::Union{Nothing, Module}, filepath::String)
     push_testset(ts)
     jive_start!(ts)
     include_test_file(context, filepath)
