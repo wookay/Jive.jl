@@ -14,22 +14,18 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[compat]
+Distributed = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+FileWatching = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+Pkg = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+Printf = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+REPL = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+Test = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+julia = "1.0.2"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
-TestJiveRunMoreTests = "a90e1516-e118-4dbd-8025-f563350fc7d4"
 
 [targets]
-test = ["Test", "Logging", "TestJiveRunMoreTests"]
-
-[sources]
-TestJiveRunMoreTests = {url = "https://github.com/wookay/TestJiveRunMoreTests.jl", rev = "main"}
-
-[compat]
-julia = "1.0.2"
-Distributed  = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-FileWatching = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Pkg          = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Printf       = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-REPL         = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Test         = "1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+test = ["Test", "Logging"]
