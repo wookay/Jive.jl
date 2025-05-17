@@ -124,9 +124,9 @@ end
 
 """
     runtests(dir::String ;
-             skip::Union{Vector{Any},Vector{<: AbstractString}} = String[],
-             node1::Union{Vector{Any},Vector{<: AbstractString}} = String[],
-             targets::Vector{<: AbstractString} = ARGS,
+             skip::Union{Vector{Any},Vector{<: AbstractString}} = Vector{String}(),
+             node1::Union{Vector{Any},Vector{<: AbstractString}} = Vector{String}(),
+             targets::Union{AbstractString, Vector{<: AbstractString}} = ARGS,
              testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
              enable_distributed::Bool = true,
              failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
@@ -138,7 +138,7 @@ run the test files from the specific directory.
 * `dir`: the root directory to traverse.
 * `skip`: files or directories to skip.
 * `node1`: run on node 1 during for the distributed tests.
-* `targets`: filter targets and start. default is `ARGS`.
+* `targets`: filter targets and start. default is `ARGS`. ' '(space) separated.
 * `testset`: filter testset. default is `nothing`.
 * `enable_distributed`: option for distributed.
 * `failfast`: aborting on the first failure.
@@ -146,19 +146,22 @@ run the test files from the specific directory.
 * `verbose`: print details of test execution
 """
 function runtests(dir::String ;
-                  skip::Union{Vector{Any},Vector{<: AbstractString}} = String[],
-                  node1::Union{Vector{Any},Vector{<: AbstractString}} = String[],
-                  targets::Vector{<: AbstractString} = ARGS,
+                  skip::Union{Vector{Any}, Vector{<: AbstractString}} = Vector{String}(),
+                  node1::Union{Vector{Any}, Vector{<: AbstractString}} = Vector{String}(),
+                  targets::Union{AbstractString, Vector{<: AbstractString}} = ARGS,
                   testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
                   enable_distributed::Bool = true,
                   failfast::Bool = compat_get_bool_env("JULIA_TEST_FAILFAST", false),
                   context::Union{Nothing, Module} = nothing,
                   verbose::Bool = true)::Total
-    global jive_testset_filter = build_testset_filter(testset)
-    env_jive_skip = get(ENV, "JIVE_SKIP", "")
+    env_jive_skip = get(ENV, "JIVE_SKIP", "") # ,(comma) separated.
     if !isempty(env_jive_skip)
         skip = split(env_jive_skip, ",")
     end
+    if targets isa AbstractString
+        targets = split(targets)
+    end
+    global jive_testset_filter = build_testset_filter(testset)
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), Vector{String}(targets))
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     FAIL_FAST[] = failfast
@@ -175,7 +178,7 @@ function runtests(dir::String ;
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose, failfast)
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, failfast)
             return total
         else
             total = normal_run(dir, all_tests, start_idx, context, verbose, failfast)
