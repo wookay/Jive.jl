@@ -28,8 +28,6 @@ macro skip(expr::Expr)
         elseif typ === :call
             push!(Skipped.expressions, typ=>first(expr.args))
         else
-            # @info :typ (typ, expr.args)
-            # do if quote block using return (=) vect
             push!(Skipped.expressions, typ)
         end
         nothing

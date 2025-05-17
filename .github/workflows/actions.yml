@@ -57,7 +57,7 @@ jobs:
                            JIVE_SKIP=Example,errors,jive/onlyonce/heavy.jl,jive/__END__/included.jl,jive/__REPL__ julia --project=.. runtests.jl
            cd ../
 
-    - name: enable_distributed, JIVE_PROCS
+    - name: runtests(; enable_distributed::Bool), JIVE_PROCS
       run: |
            cd test/
                            julia --project=.. -pauto -e 'using Jive; runtests(@__DIR__, targets=["test"])'
@@ -66,11 +66,11 @@ jobs:
            JIVE_PROCS=0    julia --project=.. -pauto -e 'using Pkg; Pkg.test(; test_args=["test"])'
            cd ../
 
-    - name: stop_on_failure
+    - name: runtests(; failfast::Bool), JULIA_TEST_FAILFAST
       run: |
            cd test/
-                           julia --project=..        -e 'using Jive; runtests(@__DIR__, targets=["errors"], stop_on_failure=true)' || true
-                           julia --project=..        -e 'using Jive; runtests(@__DIR__, targets=["errors"])' || true
+           JULIA_TEST_FAILFAST=1 julia --project=..  -e 'using Jive; runtests(@__DIR__, targets=["errors"])' || true
+                                 julia --project=..  -e 'using Jive; runtests(@__DIR__, targets=["errors"], failfast=true)' || true
            cd ../
 
     - name: using Revise

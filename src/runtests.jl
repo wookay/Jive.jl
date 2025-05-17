@@ -30,8 +30,7 @@ cumulative_compile_timing, cumulative_compile_time_ns = begin
     end
 end
 
-jive_stop_on_failure = false
-jive_testset_filter = nothing
+global jive_testset_filter = nothing
 
 include("runtests_testset.jl")
 include("runtests_distributed_run.jl")
@@ -51,10 +50,10 @@ mutable struct Total
     end
 end
 
-struct FinishedWithErrors <: Exception
+struct FinishedWithErrorsException <: Exception
 end
 
-function Base.showerror(io::IO, ex::FinishedWithErrors, bt; backtrace=true)
+function Base.showerror(io::IO, ex::FinishedWithErrorsException, bt; backtrace=true)
     printstyled(io, "Test run finished with errors.", color=:red, bold=true)
 end
 
@@ -117,7 +116,7 @@ end
              targets::Vector{String} = ARGS,
              testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
              enable_distributed::Bool = true,
-             stop_on_failure::Bool = false,
+             failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
              context::Union{Nothing,Module} = nothing,
              verbose::Bool = true)::Total
 
@@ -129,7 +128,7 @@ run the test files from the specific directory.
 * `targets`: filter targets and start. default is `ARGS`.
 * `testset`: filter testset. default is `nothing`.
 * `enable_distributed`: option for distributed.
-* `stop_on_failure`: stop on the failure or error.
+* `failfast`: aborting on the first failure.
 * `context`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
 * `verbose`: print details of test execution
 """
@@ -139,10 +138,9 @@ function runtests(dir::String ;
                   targets::Vector{String} = ARGS,
                   testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
                   enable_distributed::Bool = true,
-                  stop_on_failure::Bool = false,
+                  failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
                   context::Union{Nothing,Module} = nothing,
                   verbose::Bool = true)::Total
-    global jive_stop_on_failure = stop_on_failure
     global jive_testset_filter = build_testset_filter(testset)
     env_jive_skip = get(ENV, "JIVE_SKIP", "")
     if !isempty(env_jive_skip)
@@ -150,8 +148,9 @@ function runtests(dir::String ;
     end
     (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), targets)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
+    FAIL_FAST[] = failfast
     if ("0" == env_jive_procs) || !enable_distributed
-        total = normal_run(dir, all_tests, start_idx, context, verbose)
+        total = normal_run(dir, all_tests, start_idx, context, verbose, failfast)
         return total
     else
         num_procs = nprocs()
@@ -163,10 +162,10 @@ function runtests(dir::String ;
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose)
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(node1), context, verbose, failfast)
             return total
         else
-            total = normal_run(dir, all_tests, start_idx, context, verbose)
+            total = normal_run(dir, all_tests, start_idx, context, verbose, failfast)
             return total
         end
     end
@@ -197,7 +196,7 @@ function got_anynonpass(tc)::Bool
     any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool)::Total
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
     for (idx, subpath) in enumerate(tests)
@@ -210,10 +209,21 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         verbose && jive_getting_on_the_floor(io, numbering, subpath, "")
         filepath = normpath(dir, slash_to_path_separator(subpath))
         description = jive_testset_description(numbering)
-        ts = JiveTestSet(description)
-        jive_lets_dance(io, verbose, ts, context, filepath)
+        ts = JiveTestSet(description, failfast = failfast)
+        try
+            jive_lets_dance(io, verbose, ts, context, filepath)
+        catch _e
+            if _e isa LoadError
+                if _e.error isa Test.FailFastError
+                else
+                    showerror(io, _e.error)
+                end
+            else
+                showerror(io, _e)
+            end
+        end # try
         tc = jive_accumulate_testset_data(io, verbose, total, ts)
-        jive_stop_on_failure && got_anynonpass(tc) && break
+        failfast && got_anynonpass(tc) && break
     end
     verbose && jive_report(io, total)
     return total
@@ -378,7 +388,7 @@ function jive_report(io::IO, total::Total)
         end
         print(io, ".")
         print_elapsed_times(io, total.compile_time, total.recompile_time, total.elapsed_time)
-        throw(FinishedWithErrors())
+        throw(FinishedWithErrorsException())
     elseif n_passes > 0
         printstyled(io, "✅  ", color=:green)
         print(io, "All ")

@@ -17,9 +17,34 @@ mutable struct JiveTestSet <: AbstractTestSet
     end
 end
 
+using .Test: TESTSET_PRINT_ENABLE
+# from julia/stdlib/Test/src/Test.jl
+function record_dont_show_backtrace end
+record_dont_show_backtrace(ts::DefaultTestSet, t::Test.Pass) = (ts.n_passed += 1; t)
+record_dont_show_backtrace(ts::DefaultTestSet, t::Test.Broken) = (push!(ts.results, t); t)
+function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Test.Fail, Test.Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
+    if print_result
+        print(ts.description, ": ")
+        # don't print for interrupted tests
+        if !(t isa Error) || t.test_type !== :test_interrupted
+            print(t)
+            if !isa(t, Error) # if not gets printed in the show method
+            #    Base.show_backtrace(stdout, scrub_backtrace(backtrace(), ts.file, extract_file(t.source)))
+            end
+            println()
+        end
+    end
+    push!(ts.results, t)
+    (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+    return t
+end
+record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure) = push!(ts.results, t)
+record_dont_show_backtrace(ts::DefaultTestSet, t::AbstractTestSet) = push!(ts.results, t)
+
 import .Test: record, finish
+
 function record(ts::JiveTestSet, t::Union{Test.Pass, Test.Broken, Test.Fail, Test.Error, Test.LogTestFailure, AbstractTestSet})
-    record(ts.default, t)
+    return record_dont_show_backtrace(ts.default, t)
 end
 
 function finish(ts::JiveTestSet)
@@ -40,21 +65,23 @@ macro testset(name::String, rest_args...)
     end
 
     args = (name, rest_args...)
+    isempty(args) && error("No arguments to @testset")
+
     tests = args[end]
 
     # Determine if a single block or for-loop style
-    if !isa(tests, Expr) || (tests.head !== :for && tests.head !== :block && tests.head !== :call && tests.head !== :let)
+    if !isa(tests,Expr) || (tests.head !== :for && tests.head !== :block && tests.head !== :call && tests.head !== :let)
+
         error("Expected function call, begin/end block or for loop as argument to @testset")
     end
 
-    if VERSION >= v"1.9.0-DEV.623"
-        Test.FAIL_FAST[] = something(tryparse(Bool, get(ENV, "JULIA_TEST_FAILFAST", "false")), false)
-    end
+    # set by runtests(; failfast::Bool)
+    # FAIL_FAST[] = Base.get_bool_env("JULIA_TEST_FAILFAST", false)
 
     if tests.head === :for
         return testset_forloop(args, tests, __source__)
     elseif tests.head === :let
-        return Test.testset_context(args, tests, __source__)
+        return testset_context(args, tests, __source__)
     else
         return testset_beginend_call(args, tests, __source__)
     end

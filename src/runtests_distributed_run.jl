@@ -13,9 +13,7 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context:
     (ts, buf)
 end
 
-function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context::Union{Nothing,Module}, verbose::Bool)::Total
-    global jive_stop_on_failure
-
+function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "nworkers()", color=:cyan)
     printstyled(io, ": ", nworkers(), ", ")
@@ -64,7 +62,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
                             tc = jive_accumulate_testset_data(io, verbose, total, ts)
-                            if jive_stop_on_failure && got_anynonpass(tc)
+                            if failfast && got_anynonpass(tc)
                                 stop = true
                                 break
                             end
@@ -85,7 +83,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             (ts, buf) = fetch(f)
             verbose && print(io, String(take!(buf)))
             tc = jive_accumulate_testset_data(io, verbose, total, ts)
-            jive_stop_on_failure && got_anynonpass(tc) && break
+            failfast && got_anynonpass(tc) && break
         end
     catch err
         print(io, "⚠️  ")

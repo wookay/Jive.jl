@@ -115,4 +115,10 @@ function compat_scrub_backtrace(bt, file_ts, file_t)
     end
 end
 
+FAIL_FAST = if VERSION >= v"1.9.0-DEV.623"
+    Test.FAIL_FAST
+else
+    Ref{Bool}(false)
+end
+
 # end # module Jive

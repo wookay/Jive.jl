@@ -27,8 +27,8 @@ function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vec
         try
             (errread, errwrite) = redirect_stderr()
             cb(path)
-        catch err
-            @info :watch_catch err
+        catch _e
+            @info :watch_catch _e
         finally
             errstream = @async read(errread, String)
             redirect_stderr(oldstderr)
