@@ -1,8 +1,8 @@
 # Jive.jl 👣
 
-|  **Documentation**                        |  **Build Status**                                                  |
-|:-----------------------------------------:|:------------------------------------------------------------------:|
-|  [![][docs-latest-img]][docs-latest-url]  |  [![][actions-img]][actions-url]  [![][codecov-img]][codecov-url]  |
+|  **Documentation**                        |  **Build Status** ([Jive.jl](https://github.com/wookay/Jive.jl))  |  **Build Status** ([TestJiveRunMoreTests.jl](https://github.com/wookay/TestJiveRunMoreTests.jl))  |  **Coverage**                     |
+|:-----------------------------------------:|:-----------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------:|:---------------------------------:|
+|  [![][docs-latest-img]][docs-latest-url]  |  [![][actions-img]][actions-url]                                  |  [![][runmoretests-img]][runmoretests-url]                                                        |  [![][codecov-img]][codecov-url]  |
 
 
 `Jive.jl` is a Julia package to help the writing tests.
@@ -251,6 +251,9 @@ same for `Base.delete_method(only(methods(f, types)))`
 
 [actions-img]: https://github.com/wookay/Jive.jl/actions/workflows/actions.yml/badge.svg
 [actions-url]: https://github.com/wookay/Jive.jl/actions
+
+[runmoretests-img]: https://github.com/wookay/TestJiveRunMoreTests.jl/actions/workflows/actions.yml/badge.svg
+[runmoretests-url]: https://github.com/wookay/TestJiveRunMoreTests.jl/actions
 
 [codecov-img]: https://codecov.io/gh/wookay/Jive.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/wookay/Jive.jl/branch/master
