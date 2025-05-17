@@ -138,7 +138,7 @@ function runtests(dir::String ;
                   targets::Vector{String} = ARGS,
                   testset::Union{Nothing, String, Vector{String}, Regex, Base.Callable} = nothing,
                   enable_distributed::Bool = true,
-                  failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
+                  failfast::Bool = compat_get_bool_env("JULIA_TEST_FAILFAST", false),
                   context::Union{Nothing,Module} = nothing,
                   verbose::Bool = true)::Total
     global jive_testset_filter = build_testset_filter(testset)

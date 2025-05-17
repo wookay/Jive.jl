@@ -115,10 +115,26 @@ function compat_scrub_backtrace(bt, file_ts, file_t)
     end
 end
 
-FAIL_FAST = if VERSION >= v"1.9.0-DEV.623"
-    Test.FAIL_FAST
-else
-    Ref{Bool}(false)
-end
+
+compat_get_bool_env =
+    if VERSION >= v"1.11.0-DEV.1432"
+        Base.get_bool_env
+    else
+        function get_bool_env(name::String, default::Bool)::Bool
+            if haskey(ENV, name)
+                parse(Bool, get("ENV", name, string(default)))
+            else
+                default
+            end
+        end
+    end
+
+
+FAIL_FAST =
+    if VERSION >= v"1.9.0-DEV.623"
+        Test.FAIL_FAST
+    else
+        Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
+    end
 
 # end # module Jive
