@@ -4,7 +4,7 @@ keywords = ["distributed", "test"]
 license = "MIT"
 desc = "some useful steps in tests"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
-version = "0.3.3"
+version = "0.3.4-DEV"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -17,9 +17,13 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+TestJiveRunMoreTests = "a90e1516-e118-4dbd-8025-f563350fc7d4"
 
 [targets]
-test = ["Test", "Logging"]
+test = ["Test", "Logging", "TestJiveRunMoreTests"]
+
+[sources]
+TestJiveRunMoreTests = {url = "https://github.com/wookay/TestJiveRunMoreTests.jl", rev = "main"}
 
 [compat]
 julia = "1.0.2"
