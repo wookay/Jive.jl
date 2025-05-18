@@ -49,29 +49,7 @@ for the `runtests.jl`, `ARGS` are used to filter the targets and to set the star
 
 in the above example, test files are matched for only have `jive/s` and jumping up to the 3rd file.
 
-### Examples
-
-* run tests
-```sh
-~/.julia/dev/Jive/test $ julia runtests.jl
-```
-
-* run tests with target directory.
-```sh
-~/.julia/dev/Jive/test $ julia runtests.jl jive/If
-```
-
-* distributed run tests with `-p`
-```sh
-~/.julia/dev/Jive/test $ julia -p3 runtests.jl
-```
-
-* distributed run tests for `Pkg.test()`, using `JIVE_PROCS` ENV.
-```sh
-~/.julia/dev/Jive $ JIVE_PROCS=2 julia --project=. -e 'using Pkg; Pkg.test()'
-
-~/.julia/dev/Jive $ julia --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
-```
+Refer to the [docs/runtests](https://wookay.github.io/docs/Jive.jl/runtests/) for details.
 
 [TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
 look at also the `test/Project.toml` file for your own package.
@@ -99,19 +77,8 @@ skip the expression.
 ```julia
 using Jive # @skip
 
-@skip module want_to_skip_this_module
-sleep(2)
-end
-
-@skip function want_to_skip_this_function()
-sleep(2)
-end
-
 @skip println(1+2)
 ```
-
-  - Change to do not skip the code: set `ENV["JIVE_ENABLE_SKIP_MACRO"] = "0"`
-
 
 # @onlyonce
 
