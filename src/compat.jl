@@ -16,7 +16,6 @@ end
 
 testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
 trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_failure_break : (err) -> nothing
-FailFastError = VERSION >= v"1.9.0-DEV.623" ? Test.FailFastError : ErrorException
 
 ### compat @testset let
 if VERSION >= v"1.9.0-DEV.1061"
@@ -129,12 +128,11 @@ compat_get_bool_env =
         end
     end
 
-
-FAIL_FAST =
-    if VERSION >= v"1.9.0-DEV.623"
-        Test.FAIL_FAST
-    else
-        Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
-    end
+if VERSION >= v"1.9.0-DEV.623"
+    using .Test: FailFastError, FAIL_FAST
+else
+    struct FailFastError <: Exception end
+    FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
+end
 
 # end # module Jive

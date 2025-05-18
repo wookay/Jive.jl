@@ -35,7 +35,11 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Test.Fail, Test
         end
     end
     push!(ts.results, t)
-    (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+    if VERSION >= v"1.9.0-DEV.623"
+        (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+    else
+        FAIL_FAST[] && throw(FailFastError())
+    end
     return t
 end
 record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure) = push!(ts.results, t)
