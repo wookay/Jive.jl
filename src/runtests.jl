@@ -80,7 +80,7 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
             for arg in targets
                 if occursin('=', arg)
                     name, val = split(arg, '=')
-                    if name == "start"
+                    if name == "start" && !isempty(val) && all(isdigit, val)
                         start_idx = parse(Int, val)
                     end
                 else
@@ -119,7 +119,7 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
             end # for (root, dirs, files) in walkdir(dir)
         end # for filterpath in filters
     end
-    (all_files, start_idx)
+    (unique(all_files), start_idx)
 end
 
 """
