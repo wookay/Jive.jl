@@ -49,7 +49,7 @@ jobs:
     - name: RunMoreTests
       run: |
            cd test/
-           julia --project=.. -e 'using Pkg; Pkg.develop(url="https://github.com/wookay/TestJiveRunMoreTests.jl"); Pkg.test("TestJiveRunMoreTests")'
+           julia -e 'using Pkg; Pkg.develop(url="https://github.com/wookay/TestJiveRunMoreTests.jl"); Pkg.test("TestJiveRunMoreTests")'
            cd ../
 
   RunForMacOS:
