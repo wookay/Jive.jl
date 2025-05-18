@@ -1,6 +1,7 @@
 # watch
 
 watch the folders.
+You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
 
 ```@docs
 Jive.watch

@@ -82,6 +82,9 @@ Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
 
 [targets]
 test = ["Test", "Jive"]
+
+[compat]
+Jive = "0.3"
 ```
 
 See [TestJiveRunMoreTests.jl](https://github.com/wookay/TestJiveRunMoreTests.jl) to care the advanced cases.

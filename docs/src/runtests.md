@@ -55,52 +55,17 @@ in the above example, test files are matched for only have `jive/s` and jumping 
 ```
 
 [TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
-look at also the `Project.toml` file for your own package.
+look at also the `test/Project.toml` file for your own package.
 ```toml
-[extras]
+[deps]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
 
 [targets]
 test = ["Test", "Jive"]
+
+[compat]
+Jive = "0.3"
 ```
 
-
-# Watch package folders
-
-You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
-
-```sh
-~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
-using Jive
-runtests(@__DIR__, skip=["revise.jl"])
-
-~/.julia/dev/Jive/test/Example/test $ cat revise.jl
-# julia -i -q --project=.. revise.jl example
-
-using Revise, Jive
-using Example
-
-trigger = function (path)
-    printstyled("changed ", color=:cyan)
-    println(path)
-    revise()
-    runtests(@__DIR__, skip=["revise.jl"])
-end
-
-watch(trigger, @__DIR__, sources=[pathof(Example)])
-trigger("")
-
-Base.JLOptions().isinteractive==0 && wait()
-
-~/.julia/dev/Jive/test/Example/test $ julia -i -q --project=.. revise.jl example
-watching folders ...
-  - ../src
-  - example
-changed
-1/1 example/test1.jl
-    Pass 1  (0.27 seconds)
-✅  All 1 test has been completed.  (0.55 seconds)
-```
-
-when saving any files in the watching folders, it automatically run tests.
+See [TestJiveRunMoreTests.jl](https://github.com/wookay/TestJiveRunMoreTests.jl) to care the advanced cases.
