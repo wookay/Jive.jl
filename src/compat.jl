@@ -121,7 +121,7 @@ compat_get_bool_env =
     else
         function get_bool_env(name::String, default::Bool)::Bool
             if haskey(ENV, name)
-                parse(Bool, get("ENV", name, string(default)))
+                parse(Bool, getindex(ENV, name))
             else
                 default
             end
