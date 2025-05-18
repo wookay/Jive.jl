@@ -11,7 +11,6 @@
 
 
   - [runtests](#runtests)
-  - [watch](#watch-package-folders)
   - [@skip](#skip)
   - [@onlyonce](#onlyonce)
   - [@If](#If)
@@ -85,47 +84,7 @@ Jive = "ba5e3d4b-8524-549f-bc71-e76ad9e9deed"
 test = ["Test", "Jive"]
 ```
 
-
-# Watch package folders
-
-You may need to install [Revise.jl](https://github.com/timholy/Revise.jl).
-
-```sh
-~/.julia/dev/Jive/test/Example/test $ cat runtests.jl
-using Jive
-runtests(@__DIR__, skip=["revise.jl"])
-
-~/.julia/dev/Jive/test/Example/test $ cat revise.jl
-# julia -i -q --project=. revise.jl example
-
-using Revise, Jive
-using Example
-
-trigger = function (path)
-    printstyled("changed ", color=:cyan)
-    println(path)
-    revise()
-    runtests(@__DIR__, skip=["revise.jl"])
-end
-
-watch(trigger, @__DIR__, sources=[pathof(Example)])
-trigger("")
-
-Base.JLOptions().isinteractive==0 && wait()
-
-~/.julia/dev/Jive/test/Example/test $ julia -e 'using Pkg; pkg"dev Revise .."'
-
-~/.julia/dev/Jive/test/Example/test $ julia -i -q --project=. revise.jl example
-watching folders ...
-  - ../src
-  - example
-changed
-1/1 example/test1.jl
-    Pass 1  (0.27 seconds)
-✅  All 1 test has been completed.  (0.55 seconds)
-```
-
-when saving any files in the watching folders, it automatically run tests.
+See [TestJiveRunMoreTests.jl](https://github.com/wookay/TestJiveRunMoreTests.jl) to care the advanced cases.
 
 
 # @skip

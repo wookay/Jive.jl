@@ -124,49 +124,67 @@ end
 
 """
     runtests(dir::String ;
-             skip::Union{Vector{Any},Vector{<: AbstractString}} = Vector{String}(),
-             node1::Union{Vector{Any},Vector{<: AbstractString}} = Vector{String}(),
-             targets::Union{AbstractString, Vector{<: AbstractString}} = ARGS,
+             failfast::Bool = false,
+             targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
+             skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-             enable_distributed::Bool = true,
-             failfast::Bool = Base.get_bool_env("JULIA_TEST_FAILFAST", false),
              context::Union{Nothing, Module} = nothing,
+             enable_distributed::Bool = true,
+             node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              verbose::Bool = true)::Total
 
 run the test files from the specific directory.
 
 * `dir`: the root directory to traverse.
-* `skip`: files or directories to skip.
-* `node1`: run on node 1 during for the distributed tests.
-* `targets`: filter targets and start. default is `ARGS`. ' '(space) separated.
+* `failfast`: aborting on the first failure. be overridden when the `ENV` variable `JULIA_TEST_FAILFAST` has set.
+* `targets`: filter targets and start. ` `(space) separated `String` or a `Vector{String}`. be overridden when `ARGS` are not empty.
+* `skip`: files or directories to skip. be overridden when the `ENV` variable `JIVE_SKIP` has set. `,`(comma) separated.
 * `testset`: filter testset. default is `nothing`.
-* `enable_distributed`: option for distributed.
-* `failfast`: aborting on the first failure.
 * `context`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
+* `enable_distributed`: option for distributed. be overridden when the `ENV` variable `JIVE_PROCS` has set.
+* `node1`: run on node 1 during for the distributed tests.
 * `verbose`: print details of test execution
 """
 function runtests(dir::String ;
-                  skip::Union{Vector{Any}, Vector{<: AbstractString}} = Vector{String}(),
-                  node1::Union{Vector{Any}, Vector{<: AbstractString}} = Vector{String}(),
-                  targets::Union{AbstractString, Vector{<: AbstractString}} = ARGS,
+                  failfast::Bool = false,
+                  targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
+                  skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-                  enable_distributed::Bool = true,
-                  failfast::Bool = compat_get_bool_env("JULIA_TEST_FAILFAST", false),
                   context::Union{Nothing, Module} = nothing,
+                  enable_distributed::Bool = true,
+                  node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   verbose::Bool = true)::Total
-    env_jive_skip = get(ENV, "JIVE_SKIP", "") # ,(comma) separated.
-    if !isempty(env_jive_skip)
-        skip = split(env_jive_skip, ",")
+
+    # override_failfast
+    FAIL_FAST[] = override_failfast = compat_get_bool_env("JULIA_TEST_FAILFAST", failfast)
+
+    # override_targets
+    override_targets = begin
+         if !isempty(ARGS) && basename(dir) == "test" && basename(PROGRAM_FILE) == "runtests.jl"
+             ARGS
+        elseif targets isa AbstractString
+            Vector{String}(split(targets)) #  (space) separated
+        else
+            Vector{String}(targets)
+        end
     end
-    if targets isa AbstractString
-        targets = split(targets)
+
+    # override_skip
+    override_skip = begin
+        env_jive_skip = get(ENV, "JIVE_SKIP", "")  # ,(comma) separated
+        if isempty(env_jive_skip)
+            Vector{String}(skip)
+        else
+            Vector{String}(split(env_jive_skip, ","))
+        end
     end
+
     global jive_testset_filter = build_testset_filter(testset)
-    (all_tests, start_idx) = get_all_files(dir, Vector{String}(skip), Vector{String}(targets))
+    (all_tests, start_idx) = get_all_files(dir, override_skip, override_targets)
+
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
-    FAIL_FAST[] = failfast
     if ("0" == env_jive_procs) || !enable_distributed
-        total = normal_run(dir, all_tests, start_idx, context, verbose, failfast)
+        total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
         return total
     else
         num_procs = nprocs()
@@ -178,10 +196,10 @@ function runtests(dir::String ;
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, failfast)
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, override_failfast)
             return total
         else
-            total = normal_run(dir, all_tests, start_idx, context, verbose, failfast)
+            total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
             return total
         end
     end
