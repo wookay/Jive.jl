@@ -17,12 +17,10 @@ mutable struct JiveTestSet <: AbstractTestSet
     end
 end
 
-using .Test: TESTSET_PRINT_ENABLE
+using .Test: TESTSET_PRINT_ENABLE, Fail, Error
+
 # from julia/stdlib/Test/src/Test.jl
-function record_dont_show_backtrace end
-record_dont_show_backtrace(ts::DefaultTestSet, t::Test.Pass) = (ts.n_passed += 1; t)
-record_dont_show_backtrace(ts::DefaultTestSet, t::Test.Broken) = (push!(ts.results, t); t)
-function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Test.Fail, Test.Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
+function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Fail, Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
     if print_result
         print(ts.description, ": ")
         # don't print for interrupted tests
@@ -42,13 +40,33 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Test.Fail, Test
     end
     return t
 end
-record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure) = push!(ts.results, t)
-record_dont_show_backtrace(ts::DefaultTestSet, t::AbstractTestSet) = push!(ts.results, t)
+
+# from julia/stdlib/Test/src/logging.jl
+function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
+    if TESTSET_PRINT_ENABLE[]
+        printstyled(ts.description, ": ", color=:white)
+        print(t)
+        # Base.show_backtrace(stdout, scrub_backtrace(backtrace(), ts.file, extract_file(t.source)))
+        println()
+    end
+    # Hack: convert to `Fail` so that test summarization works correctly
+    push!(ts.results, Fail(:test, t.orig_expr, t.logs, nothing, nothing, t.source, false))
+    if VERSION >= v"1.9.0-DEV.623"
+        (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+    else
+        FAIL_FAST[] && throw(FailFastError())
+    end
+    return t
+end
 
 import .Test: record, finish
 
-function record(ts::JiveTestSet, t::Union{Test.Pass, Test.Broken, Test.Fail, Test.Error, Test.LogTestFailure, AbstractTestSet})
+function record(ts::JiveTestSet, t::Union{Fail, Error, Test.LogTestFailure})
     return record_dont_show_backtrace(ts.default, t)
+end
+
+function record(ts::JiveTestSet, t::Union{Test.Pass, Test.Broken, AbstractTestSet})
+    return record(ts.default, t)
 end
 
 function finish(ts::JiveTestSet)
@@ -58,7 +76,7 @@ end
 
 ### @testset filter
 
-using .Test: Random, Error, testset_forloop, _check_testset, default_rng
+using .Test: Random, testset_forloop, _check_testset, default_rng
 VERSION >= v"1.12.0-DEV.1812" && isdefined(Test, :get_rng) && using .Test: get_rng, set_rng!
 import .Test: @testset
 

@@ -21,23 +21,9 @@ trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_fai
 if VERSION >= v"1.9.0-DEV.1061"
     testset_context = Test.testset_context
 else
-struct Fail <: Test.Result
-    orig_expr::String
-    data::Union{Nothing, String}
-    value::String
-    context::Union{Nothing, String}
-    source::LineNumberNode
-    message_only::Bool
-    function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool)
-        return new(test_type,
-            string(orig_expr),
-            data === nothing ? nothing : string(data),
-            string(isa(data, Type) ? typeof(value) : value),
-            context,
-            source,
-            message_only)
-    end
-end
+    # Deprecated fallback constructor without `context` argument (added in Julia 1.9). Remove in Julia 2.0.
+    Fail(test_type::Symbol, orig_expr, data, value, source::LineNumberNode, message_only::Bool=false) =
+        Fail(test_type, orig_expr, data, value, nothing, source, message_only)
 
 """
     ContextTestSet
