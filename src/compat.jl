@@ -17,14 +17,54 @@ end
 testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
 trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_failure_break : (err) -> nothing
 
-### compat @testset let
-if VERSION >= v"1.9.0-DEV.1061"
+# compat Test.Fail
+#
+# v"1.11.0-DEV.336" # 4ac6b053473c4a588984b313ee0ee12dc7503e41
+# backtrace::Union{Nothing, String}
+# function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool, backtrace=nothing)
+#
+# v"1.10.0-DEV.579" # e8b9b5b7432a5215a78e9819c56433718fb7db22
+# Test.Fail <: Test.Result
+#
+# v"1.9.0-DEV.1055" # ff1b563e3c6f3ee419de0f792c5ff42744448f1c
+# context::Union{Nothing, String}
+# -    function Fail(test_type::Symbol, orig_expr, data, value, source::LineNumberNode, message_only::Bool=false)
+# +    function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool)
+#
+# v"1.8.0-DEV.363" # a03392ad4f3c01abdc5223283028af3523b6b356
+# +    message_only::Bool
+if VERSION >= v"1.9.0-DEV.1055"
+    using .Test: Fail
+elseif VERSION >= v"1.6.0-DEV.1148"
+    import .Test: Fail
+    function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool, backtrace=nothing)
+        Fail(test_type, orig_expr, data, value, source)
+    end
+else
+    using .Test: Fail
+    # get the Long-term support (LTS) version
+end
+
+# testset_context
+# @testset let
+#
+# v"1.9.0-DEV.1061" # 6f737f165e1c373cc8674bc8b5b4e345c1e915b9
+# struct ContextTestSet <: AbstractTestSet
+#-    context_sym::Symbol
+#+    context_name::Union{Symbol, Expr}
+#
+# v"1.9.0-DEV.1055" # ff1b563e3c6f3ee419de0f792c5ff42744448f1c
+# +struct ContextTestSet <: AbstractTestSet
+#+    parent_ts::AbstractTestSet
+#+    context_sym::Symbol
+#+    context::Any
+if VERSION >= v"1.9.0-DEV.1055"
     testset_context = Test.testset_context
 else
-    # Deprecated fallback constructor without `context` argument (added in Julia 1.9). Remove in Julia 2.0.
-    Fail(test_type::Symbol, orig_expr, data, value, source::LineNumberNode, message_only::Bool=false) =
-        Fail(test_type, orig_expr, data, value, nothing, source, message_only)
+    using .Test: parse_testset_args, AbstractTestSet
+    import .Test: record
 
+# from julia/stdlib/Test/src/Test.jl
 """
     ContextTestSet
 
@@ -43,43 +83,65 @@ function ContextTestSet(name::Union{Symbol, Expr}, @nospecialize(context))
     end
     return ContextTestSet(get_testset(), name, context)
 end
-
 record(c::ContextTestSet, t) = record(c.parent_ts, t)
 function record(c::ContextTestSet, t::Fail)
     context = string(c.context_name, " = ", c.context)
-    context = t.context === nothing ? context : string(t.context, "\n              ", context)
-    record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, t.message_only))
+    if VERSION >= v"1.9.0-DEV.1055"
+        context = t.context === nothing ? context : string(t.context, "\n              ", context)
+    end
+    if VERSION >= v"1.8.0-DEV.363"
+        message_only = t.message_only
+    else
+        message_only = false
+    end
+    record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, message_only))
 end
 
 """
 Generate the code for an `@testset` with a `let` argument.
 """
-function testset_context(args, tests, source)
-    desc, testsettype, options = Test.parse_testset_args(args[1:end-1])
+function testset_context(args, ex, source)
+    desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc !== nothing || testsettype !== nothing
         # Reserve this syntax if we ever want to allow this, but for now,
         # just do the transparent context test set.
         error("@testset with a `let` argument cannot be customized")
     end
 
-    assgn = tests.args[1]
-    if !isa(assgn, Expr) || assgn.head !== :(=)
-        error("`@testset let` must have exactly one assignment")
-    end
-    assignee = assgn.args[1]
+    let_ex = ex.args[1]
 
-    tests.args[2] = quote
-        $push_testset($(ContextTestSet)($(QuoteNode(assignee)), $assignee; $options...))
+    if Meta.isexpr(let_ex, :(=))
+        contexts = Any[let_ex.args[1]]
+    elseif Meta.isexpr(let_ex, :block)
+        contexts = Any[]
+        for assign_ex in let_ex.args
+            if Meta.isexpr(assign_ex, :(=))
+                push!(contexts, assign_ex.args[1])
+            else
+                error("Malformed `let` expression is given")
+            end
+        end
+    else
+        error("Malformed `let` expression is given")
+    end
+    reverse!(contexts)
+
+    test_ex = ex.args[2]
+
+    ex.args[2] = quote
+        $(map(contexts) do context
+            :($push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
+        end...)
         try
-            $(tests.args[2])
+            $(test_ex)
         finally
-            $pop_testset()
+            $(map(_->:($pop_testset()), contexts)...)
         end
     end
 
-    return esc(tests)
-end # function testset_context(args, tests, source)
-end # if VERSION >= v"1.9.0-DEV.1061"
+    return esc(ex)
+end
+end # if VERSION >= v"1.9.0-DEV.1055" # testset_context
 
 
 compat_extract_file =
@@ -113,6 +175,7 @@ compat_get_bool_env =
             end
         end
     end
+
 
 if VERSION >= v"1.9.0-DEV.623"
     using .Test: FailFastError, FAIL_FAST

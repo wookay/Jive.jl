@@ -17,9 +17,10 @@ mutable struct JiveTestSet <: AbstractTestSet
     end
 end
 
-using .Test: TESTSET_PRINT_ENABLE, Fail, Error
+using .Test: TESTSET_PRINT_ENABLE, Error
 
-# from julia/stdlib/Test/src/Test.jl
+function record_dont_show_backtrace end
+# from julia/stdlib/Test/src/Test.jl  record(ts::DefaultTestSet, t::Union{Fail, Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
 function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Fail, Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
     if print_result
         print(ts.description, ": ")
@@ -41,7 +42,7 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Fail, Error}; p
     return t
 end
 
-# from julia/stdlib/Test/src/logging.jl
+# from julia/stdlib/Test/src/logging.jl  record(ts::DefaultTestSet, t::Test.LogTestFailure)
 function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     if TESTSET_PRINT_ENABLE[]
         printstyled(ts.description, ": ", color=:white)
@@ -54,7 +55,8 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     if VERSION >= v"1.9.0-DEV.623"
         (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
     else
-        FAIL_FAST[] && throw(FailFastError())
+        # it seems that this version printing the backtrace stacks
+        # FAIL_FAST[] && throw(FailFastError())
     end
     return t
 end

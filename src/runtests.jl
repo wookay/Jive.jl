@@ -32,9 +32,9 @@ end
 
 global jive_testset_filter = nothing
 
+include("compat.jl")
 include("runtests_testset.jl")
 include("runtests_distributed_run.jl")
-include("compat.jl")
 
 mutable struct Total
     compile_time::UInt64
@@ -250,7 +250,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
             if _e isa LoadError
                 if _e.error isa FailFastError
                 else
-                    rethrow(_e.error)
+                    rethrow(_e)
                 end
             else
                 rethrow(_e)
@@ -340,8 +340,8 @@ function jive_get_test_counts(ts::JiveTestSet)
       passes,   fails,   errors,   broken,   skipped = ts.default.n_passed, 0, 0, 0, 0
     c_passes, c_fails, c_errors, c_broken, c_skipped = 0,                   0, 0, 0, 0
     for t in ts.default.results
-        isa(t, Test.Fail)   && (fails  += 1)
-        isa(t, Test.Error)  && (errors += 1)
+        isa(t, Fail)   && (fails  += 1)
+        isa(t, Error)  && (errors += 1)
         if isa(t, Test.Broken)
             if t.test_type === :skipped
                 skipped += 1
