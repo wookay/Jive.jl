@@ -73,53 +73,51 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
     filters = Vector{String}()
     start_idx = 1
     if !isempty(targets)
-        let
-            walkdir_list = walkdir(dir)
-            (root, dirs, files) = first(walkdir_list)
-            dir_and_files = vcat(dirs, files)
-            for arg in targets
-                if occursin('=', arg)
-                    name, val = split(arg, '=')
-                    if name == "start" && !isempty(val) && all(isdigit, val)
-                        start_idx = parse(Int, val)
-                    end
-                else
-                    filterpath = path_separator_to_slash(arg)
-                    if filterpath == "."
-                    elseif startswith(filterpath, "./")
-                        push!(filters, filterpath[3:end])
-                    else
-                        push!(filters, filterpath)
-                    end
+        for arg in targets
+            if occursin('=', arg)
+                name, val = split(arg, '=')
+                if name == "start" && !isempty(val) && all(isdigit, val)
+                    start_idx = parse(Int, val)
                 end
-            end # for arg in targets
-        end
+            else
+                filterpath = path_separator_to_slash(arg)
+                if filterpath == "."
+                elseif startswith(filterpath, "./")
+                    push!(filters, filterpath[3:end])
+                else
+                    push!(filters, filterpath)
+                end
+            end
+        end # for arg in targets
     end
+
     all_files = Vector{String}()
-    if isempty(filters)
+    function traverse_target(dir::String, filterpath::Union{Nothing, String})
         for (root, dirs, files) in walkdir(dir)
             for filename in files
                 !endswith(filename, ".jl") && continue
                 root == dir && "runtests.jl" == filename && continue
                 filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
                 any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
-                push!(all_files, filepath)
-            end
-        end # for (root, dirs, files) in walkdir(dir)
-    else
-        for filterpath in filters
-            for (root, dirs, files) in walkdir(dir)
-                for filename in files
-                    !endswith(filename, ".jl") && continue
-                    root == dir && "runtests.jl" == filename && continue
-                    filepath = path_separator_to_slash(relpath(normpath(root, filename), dir))
-                    any(x -> startswith(filepath, x), path_separator_to_slash.(skip)) && continue
+                if filterpath === nothing
+                    push!(all_files, filepath)
+                else
                     startswith(filepath, filterpath) && push!(all_files, filepath)
                 end
-            end # for (root, dirs, files) in walkdir(dir)
-        end # for filterpath in filters
+            end # for filename in files
+        end # for (root, dirs, files) in walkdir(dir)
     end
-    (unique(all_files), start_idx)
+
+    if isempty(filters)
+        traverse_target(dir, nothing)
+        all_unique_files = all_files
+    else
+        for filterpath in filters
+            traverse_target(dir, filterpath)
+        end
+        all_unique_files = unique(all_files)
+    end
+    (all_unique_files, start_idx)
 end
 
 """
