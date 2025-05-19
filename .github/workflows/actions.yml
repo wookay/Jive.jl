@@ -1,7 +1,12 @@
 # https://github.com/julia-actions/cache#usage
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - README.md
+      - 'docs/**'
+  pull_request:
 
 # needed to allow julia-actions/cache to delete old caches that it has created
 permissions:
