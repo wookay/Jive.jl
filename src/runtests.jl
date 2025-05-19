@@ -250,10 +250,10 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
             if _e isa LoadError
                 if _e.error isa FailFastError
                 else
-                    showerror(io, _e.error)
+                    rethrow(_e.error)
                 end
             else
-                showerror(io, _e)
+                rethrow(_e)
             end
         end # try
         tc = jive_accumulate_testset_data(io, verbose, total, ts)
