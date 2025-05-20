@@ -83,6 +83,22 @@ jobs:
         run: |
              julia -e 'using InteractiveUtils; versioninfo()'
 
+  RunForJulia154:
+    needs: RunMoreTests
+    if: github.event.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: 1.5.4 # 2021-03-11
+      - uses: julia-actions/cache@v1
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - name: versioninfo
+        run: |
+             julia -e 'using InteractiveUtils; versioninfo()'
+
   Coverage:
     needs: RunMoreTests
     if: github.event.ref == 'refs/heads/master'
