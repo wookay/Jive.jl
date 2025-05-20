@@ -33,6 +33,15 @@ trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_fai
 #
 # v"1.8.0-DEV.363" # a03392ad4f3c01abdc5223283028af3523b6b356
 # +    message_only::Bool
+#
+# v"1.6.0-DEV.1148" # 7d3dac44dc917a215607bfa1a6054a21846f02a7
+# +struct Fail <: Result
+# -    orig_expr
+# -    data
+# -    value
+# +    orig_expr::String
+# +    data::Union{Nothing, String}
+# +    value::String
 if VERSION >= v"1.9.0-DEV.1055"
     using .Test: Fail
 elseif VERSION >= v"1.6.0-DEV.1148"

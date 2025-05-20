@@ -82,12 +82,16 @@ end
 result = popfirst!(results)
 @test result isa Test.Pass
 @test result.test_type === :test
-@test result.value == true
+@test result.value === true
 
 result = popfirst!(results)
 @test result isa Test.Fail
 @test result.test_type === :test
-@test result.value == "false"
+if VERSION >= v"1.6.0-DEV.1148"
+    @test result.value == "false"
+else
+    @test result.value === false
+end
 
 result = popfirst!(results)
 @test result isa Test.Error
