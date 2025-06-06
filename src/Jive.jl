@@ -28,6 +28,7 @@ include("watch.jl")
 include("delete.jl")
 
 export sprint_plain, sprint_colored, sprint_html
+export @sprint_plain, @sprint_colored
 include("sprints.jl")
 
 end # module Jive

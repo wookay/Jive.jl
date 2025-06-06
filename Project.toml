@@ -4,7 +4,7 @@ keywords = ["distributed", "test"]
 license = "MIT"
 desc = "some useful steps in tests"
 authors = ["WooKyoung Noh <wookay.noh@gmail.com>"]
-version = "0.3.8"
+version = "0.3.9-DEV"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -13,6 +13,7 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+IOCapture = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 
 [compat]
 Distributed  = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
@@ -21,6 +22,7 @@ Pkg          = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
 Printf       = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
 REPL         = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
 Test         = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+IOCapture    = "0.2"
 julia        = "1.0.2"
 
 [extras]
