@@ -16,18 +16,21 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 IOCapture = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 
 [compat]
-Distributed  = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-FileWatching = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Pkg          = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Printf       = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-REPL         = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
-Test         = "1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11"
+Distributed  = "1.5, 1.6, 1.10, 1.11"
+FileWatching = "1.5, 1.6, 1.10, 1.11"
+Pkg          = "1.5, 1.6, 1.10, 1.11"
+Printf       = "1.5, 1.6, 1.10, 1.11"
+REPL         = "1.5, 1.6, 1.10, 1.11"
+Test         = "1.5, 1.6, 1.10, 1.11"
+Logging      = "1.5, 1.6, 1.10, 1.11"
 IOCapture    = "0.2"
+ANSIColoredPrinters = "0.0"
 julia        = "1.0.2"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+ANSIColoredPrinters = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
 
 [targets]
-test = ["Test", "Logging"]
+test = ["Test", "Logging", "ANSIColoredPrinters"]

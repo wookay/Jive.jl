@@ -30,6 +30,18 @@ end
 @test @sprint_colored(print(stdout, foo))                         == "Foo()"
 @test @sprint_colored(Base.show(stdout, MIME("text/plain"), foo)) == "\e[92mFoo\e[39m()"
 
+using ANSIColoredPrinters: PlainTextPrinter
+
+function ansi_to_plain(str::AbstractString)::String
+    buf = IOBuffer()
+    printer = PlainTextPrinter(buf)
+    print(buf, str)
+    repr("text/plain", printer)
+end
+
+@test ansi_to_plain("\e[92mFoo\e[39m()")            == "Foo()"
+@test ansi_to_plain(SubString("\e[92mFoo\e[39m()")) == "Foo()"
+
 
 @test "π" == string(pi) ==
              sprint(show, pi)
