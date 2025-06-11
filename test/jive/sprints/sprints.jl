@@ -28,14 +28,15 @@ end
 
 @test @sprint_colored(foo)                                        == "\e[92mFoo\e[39m()"
 @test @sprint_colored(print(stdout, foo))                         == "Foo()"
+if VERSION >= v"1.6.0-DEV.481" # https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl#L120
 @test @sprint_colored(Base.show(stdout, MIME("text/plain"), foo)) == "\e[92mFoo\e[39m()"
+end
 
 using ANSIColoredPrinters: PlainTextPrinter
 
 function ansi_to_plain(str::AbstractString)::String
-    buf = IOBuffer()
+    buf = IOBuffer(str)
     printer = PlainTextPrinter(buf)
-    print(buf, str)
     repr("text/plain", printer)
 end
 
