@@ -241,12 +241,13 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         verbose && jive_getting_on_the_floor(io, numbering, subpath, "")
         filepath = normpath(dir, slash_to_path_separator(subpath))
         description = jive_testset_description(numbering)
-        ts = JiveTestSet(description, failfast = failfast)
+        ts = JiveTestSet(description)
         try
             jive_lets_dance(io, verbose, ts, context, filepath)
         catch _e
             if _e isa LoadError
                 if _e.error isa FailFastError
+                    failfast = true
                 else
                     rethrow(_e)
                 end

@@ -64,8 +64,7 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     if VERSION >= v"1.9.0-DEV.623"
         (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
     else
-        # it seems that this version printing the backtrace stacks
-        # FAIL_FAST[] && throw(FailFastError())
+        FAIL_FAST[] && throw(FailFastError())
     end
     return t
 end
@@ -87,7 +86,7 @@ end
 
 ### @testset filter
 
-using .Test: Random, testset_forloop, _check_testset, default_rng
+using .Test: Random, _check_testset, default_rng
 VERSION >= v"1.12.0-DEV.1812" && isdefined(Test, :get_rng) && using .Test: get_rng, set_rng!
 import .Test: @testset
 
@@ -112,22 +111,35 @@ macro testset(name::String, rest_args...)
     # FAIL_FAST[] = Base.get_bool_env("JULIA_TEST_FAILFAST", false)
 
     if tests.head === :for
-        return testset_forloop(args, tests, __source__)
+        return compat_testset_forloop(args, tests, __source__)
     elseif tests.head === :let
-        return testset_context(args, tests, __source__)
+        return compat_testset_context(args, tests, __source__)
     else
-        return testset_beginend_call(args, tests, __source__)
+        return compat_testset_beginend_call(args, tests, __source__)
     end
 end
 
-macro testset(tests::Expr)
-    args = (tests,)
+macro testset(ex::Expr, rest_args...)
+    args = (ex, rest_args...)
+    isempty(args) && error("No arguments to @testset")
+
+    tests = args[end]
+
+    # Determine if a single block or for-loop style
+    if !isa(tests,Expr) || (tests.head !== :for && tests.head !== :block && tests.head !== :call && tests.head !== :let)
+
+        error("Expected function call, begin/end block or for loop as argument to @testset")
+    end
+
+    # set by runtests(; failfast::Bool)
+    # FAIL_FAST[] = Base.get_bool_env("JULIA_TEST_FAILFAST", false)
+
     if tests.head === :for
-        return testset_forloop(args, tests, __source__)
+        return compat_testset_forloop(args, tests, __source__)
     elseif tests.head === :let
-        return testset_context(args, tests, __source__)
+        return compat_testset_context(args, tests, __source__)
     else
-        return testset_beginend_call(args, tests, __source__)
+        return compat_testset_beginend_call(args, tests, __source__)
     end
 end
 

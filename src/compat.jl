@@ -1,5 +1,46 @@
 # module Jive
 
+if VERSION >= v"1.13.0-DEV.731"
+    using .Test: is_failfast_error
+else
+    is_failfast_error(err::FailFastError) = true
+    is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
+    is_failfast_error(err) = false
+end
+
+if VERSION >= v"1.12.0-DEV.1812"
+    using .Test: get_rng, set_rng!
+else
+    using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
+    get_rng(::AbstractTestSet) = nothing
+    get_rng(ts::DefaultTestSet) = ts.rng
+    set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
+    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
+end
+
+if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
+    using .Test: insert_toplevel_latestworld
+else
+    insert_toplevel_latestworld(@nospecialize(tests)) = tests
+end
+
+if VERSION >= v"1.9.0-DEV.228"
+    using .Test: trigger_test_failure_break
+else
+    trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
+end
+
+if VERSION >= v"1.9.0-DEV.623"
+    using .Test: FailFastError, FAIL_FAST
+else
+    struct FailFastError <: Exception end
+    FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
+end
+
+# 0.7.0-DEV.1995
+using .Test: parse_testset_args
+
+
 function compat_default_testset(args...; kwargs...)::DefaultTestSet
     if VERSION < v"1.9.0-DEV.623"
         ignore_keys = Vector{Symbol}()
@@ -14,8 +55,178 @@ function compat_default_testset(args...; kwargs...)::DefaultTestSet
     end
 end
 
-testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
-trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_failure_break : (err) -> nothing
+
+if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
+# Generate the code for a `@testset` with a `for` loop argument
+function _testset_forloop(args, testloop, source)
+    # Pull out the loop variables. We might need them for generating the
+    # description and we'll definitely need them for generating the
+    # comprehension expression at the end
+    loopvars = Expr[]
+    if testloop.args[1].head === :(=)
+        push!(loopvars, testloop.args[1])
+    elseif testloop.args[1].head === :block
+        for loopvar in testloop.args[1].args
+            push!(loopvars, loopvar)
+        end
+    else
+        error("Unexpected argument to @testset")
+    end
+
+    desc, testsettype, options = parse_testset_args(args[1:end-1])
+
+    if desc === nothing
+        # No description provided. Generate from the loop variable names
+        v = loopvars[1].args[1]
+        desc = Expr(:string, "$v = ", esc(v)) # first variable
+        for l = loopvars[2:end]
+            v = l.args[1]
+            push!(desc.args, ", $v = ")
+            push!(desc.args, esc(v))
+        end
+    end
+
+    if testsettype === nothing
+        testsettype = :(get_testset_depth() == 0 ? DefaultTestSet : typeof(get_testset()))
+    end
+
+    # Uses a similar block as for `@testset`, except that it is
+    # wrapped in the outer loop provided by the user
+    tests = testloop.args[2]
+    blk = quote
+        _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
+        # Trick to handle `break` and `continue` in the test code before
+        # they can be handled properly by `finally` lowering.
+        if !first_iteration
+            pop_testset()
+            finish_errored = true
+            push!(arr, finish(ts))
+            finish_errored = false
+            copy!(default_rng(), tls_seed)
+        end
+        ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode))
+            $(testsettype)($desc; source=$(QuoteNode(source.file)), $options..., rng=tls_seed)
+        else
+            $(testsettype)($desc; $options...)
+        end
+        push_testset(ts)
+        first_iteration = false
+        try
+            $(esc(tests))
+        catch err
+            err isa InterruptException && rethrow()
+            # Something in the test block threw an error. Count that as an
+            # error in this test set
+            trigger_test_failure_break(err)
+            if is_failfast_error(err)
+                get_testset_depth() > 1 ? rethrow() : failfast_print()
+            else
+                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source))))
+            end
+        end
+    end
+    quote
+        local arr = Vector{Any}()
+        local first_iteration = true
+        local ts
+        local rng_option = get($(options), :rng, nothing)
+        local finish_errored = false
+        local default_rng_orig = copy(default_rng())
+        local tls_seed_orig = copy(Random.get_tls_seed())
+        local tls_seed = isnothing(rng_option) ? copy(Random.get_tls_seed()) : rng_option
+        copy!(Random.default_rng(), tls_seed)
+        try
+            let
+                $(Expr(:for, Expr(:block, [esc(v) for v in loopvars]...), blk))
+            end
+        finally
+            # Handle `return` in test body
+            if !first_iteration && !finish_errored
+                pop_testset()
+                push!(arr, finish(ts))
+            end
+            copy!(default_rng(), default_rng_orig)
+            copy!(Random.get_tls_seed(), tls_seed_orig)
+        end
+        arr
+    end
+end # function _testset_forloop(args, testloop, source)
+
+# Generate the code for a `@testset` with a function call or `begin`/`end` argument
+function _testset_beginend_call(args, tests, source)
+    desc, testsettype, options = parse_testset_args(args[1:end-1])
+    if desc === nothing
+        if tests.head === :call
+            desc = string(tests.args[1]) # use the function name as test name
+        else
+            desc = "test set"
+        end
+    end
+    # If we're at the top level we'll default to DefaultTestSet. Otherwise
+    # default to the type of the parent testset
+    if testsettype === nothing
+        testsettype = :(get_testset_depth() == 0 ? DefaultTestSet : typeof(get_testset()))
+    end
+
+    tests = insert_toplevel_latestworld(tests)
+
+    # Generate a block of code that initializes a new testset, adds
+    # it to the task local storage, evaluates the test(s), before
+    # finally removing the testset and giving it a chance to take
+    # action (such as reporting the results)
+    ex = quote
+        _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
+        local ret
+        local ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode))
+            $(testsettype)($desc; source=$(QuoteNode(source.file)), $options...)
+        else
+            $(testsettype)($desc; $options...)
+        end
+        push_testset(ts)
+        # we reproduce the logic of guardseed, but this function
+        # cannot be used as it changes slightly the semantic of @testset,
+        # by wrapping the body in a function
+        local default_rng_orig = copy(default_rng())
+        local tls_seed_orig = copy(Random.get_tls_seed())
+        local tls_seed = isnothing(get_rng(ts)) ? set_rng!(ts, tls_seed_orig) : get_rng(ts)
+        try
+            # default RNG is reset to its state from last `seed!()` to ease reproduce a failed test
+            copy!(Random.default_rng(), tls_seed)
+            copy!(Random.get_tls_seed(), Random.default_rng())
+            let
+                $(esc(tests))
+            end
+        catch err
+            err isa InterruptException && rethrow()
+            # something in the test block threw an error. Count that as an
+            # error in this test set
+            trigger_test_failure_break(err)
+            if is_failfast_error(err)
+                get_testset_depth() > 1 ? rethrow() : failfast_print()
+            else
+                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source))))
+            end
+        finally
+            copy!(default_rng(), default_rng_orig)
+            copy!(Random.get_tls_seed(), tls_seed_orig)
+            pop_testset()
+            ret = finish(ts)
+        end
+        ret
+    end
+    # preserve outer location if possible
+    if tests isa Expr && tests.head === :block && !isempty(tests.args) && tests.args[1] isa LineNumberNode
+        ex = Expr(:block, tests.args[1], ex)
+    end
+    return ex
+end # function _testset_beginend_call(args, tests, source)
+    compat_testset_forloop = _testset_forloop
+    compat_testset_beginend_call = _testset_beginend_call
+else
+    compat_testset_forloop = Test.testset_forloop
+    compat_testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
+end # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
+
 
 # compat Test.Fail
 #
@@ -44,14 +255,11 @@ trigger_test_failure_break = VERSION >= v"1.9.0-DEV.228" ? Test.trigger_test_fai
 # +    value::String
 if VERSION >= v"1.9.0-DEV.1055"
     using .Test: Fail
-elseif VERSION >= v"1.6.0-DEV.1148"
+else
     import .Test: Fail
     function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool, backtrace=nothing)
         Fail(test_type, orig_expr, data, value, source)
     end
-else
-    using .Test: Fail
-    # get the Long-term support (LTS) version
 end
 
 # testset_context
@@ -68,9 +276,9 @@ end
 #+    context_sym::Symbol
 #+    context::Any
 if VERSION >= v"1.9.0-DEV.1055"
-    testset_context = Test.testset_context
+    compat_testset_context = Test.testset_context
 else
-    using .Test: parse_testset_args, AbstractTestSet
+    using .Test: AbstractTestSet
     import .Test: record
 
 # from julia/stdlib/Test/src/Test.jl
@@ -106,10 +314,8 @@ function record(c::ContextTestSet, t::Fail)
     record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, message_only))
 end
 
-"""
-Generate the code for an `@testset` with a `let` argument.
-"""
-function testset_context(args, ex, source)
+# Generate the code for an `@testset` with a `let` argument.
+function _testset_context(args, ex, source)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc !== nothing || testsettype !== nothing
         # Reserve this syntax if we ever want to allow this, but for now,
@@ -150,8 +356,8 @@ function testset_context(args, ex, source)
 
     return esc(ex)
 end
-end # if VERSION >= v"1.9.0-DEV.1055" # testset_context
-
+    compat_testset_context = _testset_context
+end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
 compat_extract_file =
     if VERSION >= v"1.10.0-DEV.1171"
@@ -171,7 +377,6 @@ function compat_scrub_backtrace(bt, file_ts, file_t)
     end
 end
 
-
 compat_get_bool_env =
     if VERSION >= v"1.11.0-DEV.1432"
         Base.get_bool_env
@@ -184,21 +389,5 @@ compat_get_bool_env =
             end
         end
     end
-
-
-if VERSION >= v"1.9.0-DEV.623"
-    using .Test: FailFastError, FAIL_FAST
-else
-    struct FailFastError <: Exception end
-    FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
-end
-
-if VERSION >= v"1.13.0-DEV.731"
-    using .Test: is_failfast_error
-else
-    is_failfast_error(err::FailFastError) = true
-    is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
-    is_failfast_error(err) = false
-end
 
 # end # module Jive
