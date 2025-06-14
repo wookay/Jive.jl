@@ -12,8 +12,17 @@ mutable struct JiveTestSet <: AbstractTestSet
     recompile_time::UInt64
     elapsed_time::UInt64
     default::DefaultTestSet
-    function JiveTestSet(args...; kwargs...)
-        new(UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), compat_default_testset(args...; kwargs...))
+    function JiveTestSet(args...; failfast::Union{Bool, Nothing} = nothing, kwargs...)
+        if VERSION >= v"1.9.0-DEV.623" && isnothing(failfast)
+            # pass failfast state into child testsets
+            parent_ts = get_testset()
+            if parent_ts isa JiveTestSet
+                failfast = parent_ts.default.failfast
+            else
+                failfast = false
+            end
+        end
+        new(UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), UInt64(0), compat_default_testset(args...; failfast = failfast, kwargs...))
     end
 end
 

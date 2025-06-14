@@ -193,4 +193,12 @@ else
     FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
 end
 
+if VERSION >= v"1.13.0-DEV.731"
+    using .Test: is_failfast_error
+else
+    is_failfast_error(err::FailFastError) = true
+    is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
+    is_failfast_error(err) = false
+end
+
 # end # module Jive
