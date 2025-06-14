@@ -1,28 +1,7 @@
 # module Jive
 
-if VERSION >= v"1.13.0-DEV.731"
-    using .Test: is_failfast_error
-else
-    is_failfast_error(err::FailFastError) = true
-    is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
-    is_failfast_error(err) = false
-end
-
-if VERSION >= v"1.12.0-DEV.1812"
-    using .Test: get_rng, set_rng!
-else
-    using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
-    get_rng(::AbstractTestSet) = nothing
-    get_rng(ts::DefaultTestSet) = ts.rng
-    set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
-    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
-end
-
-if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
-    using .Test: insert_toplevel_latestworld
-else
-    insert_toplevel_latestworld(@nospecialize(tests)) = tests
-end
+# 0.7.0-DEV.1995
+using .Test: parse_testset_args
 
 if VERSION >= v"1.9.0-DEV.228"
     using .Test: trigger_test_failure_break
@@ -37,8 +16,29 @@ else
     FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
 end
 
-# 0.7.0-DEV.1995
-using .Test: parse_testset_args
+if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
+    using .Test: insert_toplevel_latestworld
+else
+    insert_toplevel_latestworld(@nospecialize(tests)) = tests
+end
+
+if VERSION >= v"1.12.0-DEV.1812"
+    using .Test: get_rng, set_rng!
+else
+    using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
+    get_rng(::AbstractTestSet) = nothing
+    get_rng(ts::DefaultTestSet) = ts.rng
+    set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
+    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
+end
+
+if VERSION >= v"1.13.0-DEV.731"
+    using .Test: is_failfast_error
+else
+    is_failfast_error(err::FailFastError) = true
+    is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
+    is_failfast_error(err) = false
+end
 
 
 function compat_default_testset(args...; kwargs...)::DefaultTestSet
