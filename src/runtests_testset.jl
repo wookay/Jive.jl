@@ -45,8 +45,6 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Fail, Error}; p
     push!(ts.results, t)
     if VERSION >= v"1.9.0-DEV.623"
         (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
-    else
-        FAIL_FAST[] && throw(FailFastError())
     end
     return t
 end
@@ -63,8 +61,6 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     push!(ts.results, Fail(:test, t.orig_expr, t.logs, nothing, nothing, t.source, false))
     if VERSION >= v"1.9.0-DEV.623"
         (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
-    else
-        FAIL_FAST[] && throw(FailFastError())
     end
     return t
 end
