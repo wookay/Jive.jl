@@ -3,33 +3,11 @@
 # 0.7.0-DEV.1995
 using .Test: parse_testset_args
 
-if VERSION >= v"1.9.0-DEV.228"
-    using .Test: trigger_test_failure_break
-else
-    trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
-end
-
 if VERSION >= v"1.9.0-DEV.623"
     using .Test: FailFastError, FAIL_FAST
 else
     struct FailFastError <: Exception end
     FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
-end
-
-if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
-    using .Test: insert_toplevel_latestworld
-else
-    insert_toplevel_latestworld(@nospecialize(tests)) = tests
-end
-
-if VERSION >= v"1.12.0-DEV.1812"
-    using .Test: get_rng, set_rng!
-else
-    using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
-    get_rng(::AbstractTestSet) = nothing
-    get_rng(ts::DefaultTestSet) = ts.rng
-    set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
-    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
 end
 
 if VERSION >= v"1.13.0-DEV.731"
@@ -57,6 +35,29 @@ end
 
 
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
+
+if VERSION >= v"1.9.0-DEV.228"
+    using .Test: trigger_test_failure_break
+else
+    trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
+end
+
+if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
+    using .Test: insert_toplevel_latestworld
+else
+    insert_toplevel_latestworld(@nospecialize(tests)) = tests
+end
+
+if VERSION >= v"1.12.0-DEV.1812"
+    using .Test: get_rng, set_rng!
+else
+    using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
+    get_rng(::AbstractTestSet) = nothing
+    get_rng(ts::DefaultTestSet) = ts.rng
+    set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
+    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
+end
+
 # Generate the code for a `@testset` with a `for` loop argument
 function _testset_forloop(args, testloop, source)
     # Pull out the loop variables. We might need them for generating the
@@ -358,16 +359,6 @@ function _testset_context(args, ex, source)
 end
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
-
-compat_extract_file =
-    if VERSION >= v"1.10.0-DEV.1171"
-        Test.extract_file
-    else
-        extract_file(source::LineNumberNode) = extract_file(source.file)
-        extract_file(file::Symbol) = string(file)
-        extract_file(::Nothing) = nothing
-        extract_file
-    end
 
 function compat_scrub_backtrace(bt, file_ts, file_t)
     if VERSION >= v"1.10.0-DEV.1171"
