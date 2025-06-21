@@ -26,7 +26,7 @@ mutable struct JiveTestSet <: AbstractTestSet
     end
 end
 
-using .Test: TESTSET_PRINT_ENABLE, Error
+using .Test: TESTSET_PRINT_ENABLE
 
 function record_dont_show_backtrace end
 # from julia/stdlib/Test/src/Test.jl  record(ts::DefaultTestSet, t::Union{Fail, Error}; print_result::Bool=TESTSET_PRINT_ENABLE[])
