@@ -33,14 +33,24 @@ function compat_default_testset(args...; kwargs...)::DefaultTestSet
     end
 end
 
-
-if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
-
 if VERSION >= v"1.9.0-DEV.228"
     using .Test: trigger_test_failure_break
 else
     trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
 end
+
+using .Test: Error
+if VERSION >= v"1.13.0-DEV.769" # julia commit 76d5b14c9c280c52b2c275e6cf449fe1ba7fc8d2
+    # Internal constructor for creating Error with pre-processed values (used by ContextTestSet)
+    # function Error(test_type::Symbol, orig_expr::String, value::String, backtrace::String, context::Union{Nothing, String}, source::LineNumberNode)
+    #     return new(test_type, orig_expr, value, backtrace, context, source)
+    # end
+else
+    # FIXME: how to access the internal constructor for creating Error
+end
+
+
+if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
 if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c53ce2aae989045cfd5942dade27198b
     using .Test: insert_toplevel_latestworld
