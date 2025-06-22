@@ -22,17 +22,18 @@ function watch(callback::Function, dir::String; targets=ARGS, sources::Union{Vec
     end
 
     function run_callback(cb, path)
+        # from julia/test/channels.jl
         local oldstderr = stderr
-        local errread, errwrite, errstream
+        local newstderr = redirect_stderr()
+        local errstream::Union{Task, Nothing} = nothing
         try
-            (errread, errwrite) = redirect_stderr()
             cb(path)
+            errstream = @async read(newstderr[1], String)
         catch _e
-            @info :watch_catch _e
+            # @info :watch_catch _e
         finally
-            errstream = @async read(errread, String)
             redirect_stderr(oldstderr)
-            close(errwrite)
+            close(newstderr[2])
         end
         errmsg = fetch(errstream)
         if !isempty(errmsg)

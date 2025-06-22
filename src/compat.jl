@@ -370,13 +370,14 @@ end
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
-function compat_scrub_backtrace(bt, file_ts, file_t)
-    if VERSION >= v"1.10.0-DEV.1171"
-        scrub_backtrace(bt, file_ts, file_t)
-    else
-        scrub_backtrace(bt)
-    end
+
+if VERSION < v"1.10.0-DEV.1171" # julia commit 5304baa45a9a686f122525f0cdea7c604a39aa76
+import .Test: scrub_backtrace
+function scrub_backtrace(bt, file_ts, file_t)
+    scrub_backtrace(bt)
 end
+end # if VERSION < v"1.10.0-DEV.1171"
+
 
 compat_get_bool_env =
     if VERSION >= v"1.11.0-DEV.1432"
