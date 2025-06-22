@@ -115,7 +115,7 @@ end # let results = @testset NoThrowTestSet
 end # module test_testset_results
 
 
-module test_testset_ContextTestSet
+@If VERSION >= v"1.9.0-DEV.1055" module test_testset_ContextTestSet
 
 using Test
 
