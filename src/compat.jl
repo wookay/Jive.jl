@@ -39,6 +39,17 @@ else
     trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
 end
 
+
+if VERSION >= v"1.10.0-DEV.1171" # julia commit 5304baa45a9a686f122525f0cdea7c604a39aa76
+using .Test: scrub_backtrace
+else
+import .Test: scrub_backtrace
+function scrub_backtrace(bt, file_ts, file_t)
+    scrub_backtrace(bt)
+end
+end # if VERSION >= v"1.10.0-DEV.1171"
+
+
 using .Test: Error
 if VERSION >= v"1.13.0-DEV.769" # julia commit 76d5b14c9c280c52b2c275e6cf449fe1ba7fc8d2
     # Internal constructor for creating Error with pre-processed values (used by ContextTestSet)
@@ -369,14 +380,6 @@ function _testset_context(args, ex, source)
 end
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
-
-
-if VERSION < v"1.10.0-DEV.1171" # julia commit 5304baa45a9a686f122525f0cdea7c604a39aa76
-import .Test: scrub_backtrace
-function scrub_backtrace(bt, file_ts, file_t)
-    scrub_backtrace(bt)
-end
-end # if VERSION < v"1.10.0-DEV.1171"
 
 
 compat_get_bool_env =
