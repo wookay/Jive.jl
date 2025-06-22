@@ -58,14 +58,14 @@ else
     insert_toplevel_latestworld(@nospecialize(tests)) = tests
 end
 
-if VERSION >= v"1.12.0-DEV.1812"
+if VERSION >= v"1.12.0-DEV.1812" # julia commit 6136893eeed0c3559263a5aa465b630d2c7dc821
     using .Test: get_rng, set_rng!
 else
     using .Test: AbstractTestSet, DefaultTestSet, AbstractRNG
     get_rng(::AbstractTestSet) = nothing
-    get_rng(ts::DefaultTestSet) = ts.rng
+    get_rng(ts::DefaultTestSet) = nothing
     set_rng!(::AbstractTestSet, rng::AbstractRNG) = rng
-    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = ts.rng = rng
+    set_rng!(ts::DefaultTestSet, rng::AbstractRNG) = rng
 end
 
 # Generate the code for a `@testset` with a `for` loop argument
