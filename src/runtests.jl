@@ -180,28 +180,11 @@ function runtests(dir::String ;
     global jive_testset_filter = build_testset_filter(testset)
     (all_tests, start_idx) = get_all_files(dir, override_skip, override_targets)
 
-    env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
-    if ("0" == env_jive_procs) || !enable_distributed
-        total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
-        return total
+    if enable_distributed && isdefined(@__MODULE__, :runtests_distributed_run)
+        return runtests_distributed_run(dir, all_tests, start_idx, node1, context, verbose, override_failfast)
     else
-        num_procs = nprocs()
-        if isempty(env_jive_procs)
-        elseif "auto" == env_jive_procs
-            Sys.CPU_THREADS > num_procs && addprocs(Sys.CPU_THREADS - num_procs + 1)
-        else
-            jive_procs = parse(Int, env_jive_procs)
-            jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
-        end
-        if nprocs() > 1
-            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, override_failfast)
-            return total
-        else
-            total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
-            return total
-        end
+        return normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
     end
-    # unreachable
 end
 
 build_testset_filter(::Nothing) = nothing

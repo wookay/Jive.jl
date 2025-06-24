@@ -1,5 +1,30 @@
-# code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
+# module Jive
 
+function runtests_distributed_run(dir, all_tests, start_idx, node1, context, verbose, override_failfast)
+    env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
+    if ("0" == env_jive_procs)
+        total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
+        return total
+    else
+        num_procs = nprocs()
+        if isempty(env_jive_procs)
+        elseif "auto" == env_jive_procs
+            Sys.CPU_THREADS > num_procs && addprocs(Sys.CPU_THREADS - num_procs + 1)
+        else
+            jive_procs = parse(Int, env_jive_procs)
+            jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
+        end
+        if nprocs() > 1
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, override_failfast)
+            return total
+        else
+            total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
+            return total
+        end
+    end
+end
+
+# code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 using .Distributed: @everywhere, RemoteException, remotecall, remotecall_fetch, myid, nworkers, rmprocs, workers
 
 function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context::Union{Nothing,Module}, filepath::String, verbose::Bool, color::Bool)
@@ -119,3 +144,5 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     verbose && jive_report(io, total)
     return total
 end
+
+# module Jive
