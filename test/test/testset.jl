@@ -147,6 +147,18 @@ end
 end # module test_testset_ContextTestSet
 
 
+@If VERSION >= v"1.12.0-DEV.1812" module test_testset_rng
+
+using Test, Random
+
+# julia commit 6136893eeed0c3559263a5aa465b630d2c7dc821
+@testset rng=Xoshiro(0x2e026445595ed28e, 0x07bb81ac4c54926d, 0x83d7d70843e8bad6, 0xdbef927d150af80b, 0xdbf91ddf2534f850) begin
+    @test rand() == 0.559472630416976
+end
+
+end # module test_testset_rng
+
+
 @If VERSION >= v"1.13.0-DEV.259" module test_testset_record_passes
 
 using Test

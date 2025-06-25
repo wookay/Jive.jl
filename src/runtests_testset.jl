@@ -79,6 +79,12 @@ function finish(ts::JiveTestSet)
     jive_finish!(Core.stdout, true, :test, ts)
 end
 
+if VERSION >= v"1.12.0-DEV.1812" # julia commit 6136893eeed0c3559263a5aa465b630d2c7dc821
+    import .Test: get_rng, set_rng!
+end
+using .Test: AbstractRNG
+get_rng(ts::JiveTestSet) = get_rng(ts.default)
+set_rng!(ts::JiveTestSet, rng::AbstractRNG) = set_rng!(ts.default, rng)
 
 ### @testset filter
 
