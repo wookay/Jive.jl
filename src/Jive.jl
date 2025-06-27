@@ -18,6 +18,9 @@ include("__END__.jl")
 export @__REPL__
 include("__REPL__.jl")
 
+export @time_expr
+include("time_expr.jl")
+
 export runtests
 include("runtests.jl")
 

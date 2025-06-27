@@ -1,6 +1,6 @@
 # module Jive
 
-import REPL
+using REPL
 
 struct REPLError <: Exception
 end
