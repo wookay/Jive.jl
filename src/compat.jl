@@ -78,6 +78,9 @@ else
     set_rng!(ts::T, rng::AbstractRNG) where {T <: AbstractTestSet} = hasfield(T, :rng) ? (ts.rng = rng) : rng
 end
 
+# from julia/stdlib/Test/src/Test.jl  testset_forloop(args, testloop, source)
+# v"1.13.0-DEV.864"  julia commit cdca6686574e6a079e7318e7f938460f29567fcb
+#
 # Generate the code for a `@testset` with a `for` loop argument
 function _testset_forloop(args, testloop, source)
     # Pull out the loop variables. We might need them for generating the
@@ -142,7 +145,7 @@ function _testset_forloop(args, testloop, source)
             if is_failfast_error(err)
                 get_testset_depth() > 1 ? rethrow() : failfast_print()
             else
-                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source))))
+                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source)), nothing))
             end
         end
     end
@@ -164,6 +167,7 @@ function _testset_forloop(args, testloop, source)
             # Handle `return` in test body
             if !first_iteration && !finish_errored
                 pop_testset()
+                @assert @isdefined(ts) "Assertion to tell the compiler about the definedness of this variable"
                 push!(arr, finish(ts))
             end
             copy!(default_rng(), default_rng_orig)
