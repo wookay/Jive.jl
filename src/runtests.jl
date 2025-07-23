@@ -228,12 +228,8 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         try
             jive_lets_dance(io, verbose, ts, context, filepath)
         catch _e
-            if _e isa LoadError
-                if _e.error isa FailFastError
-                    failfast = true
-                else
-                    rethrow(_e)
-                end
+            if Test.is_failfast_error(_e)
+                failfast = true
             else
                 rethrow(_e)
             end
