@@ -1,13 +1,52 @@
 # module Jive
 
-# 0.7.0-DEV.1995
-using .Test: parse_testset_args
+compat_get_bool_env =
+    if VERSION >= v"1.11.0-DEV.1432"
+        Base.get_bool_env
+    else
+        function get_bool_env(name::String, default::Bool)::Bool
+            if haskey(ENV, name)
+                parse(Bool, getindex(ENV, name))
+            else
+                default
+            end
+        end
+    end
+
+using .Test: get_testset_depth, get_testset
+
+if VERSION >= v"1.13.0-DEV.1044" # julia commit bb368512880ca6cf051a91993c9c5bb4a8d3b7d0
+    using .Test: global_fail_fast
+    function compat_push_testset(ts)
+    end
+    function compat_pop_testset()
+    end
+    using .Test: @with_testset
+else
+    if VERSION >= v"1.12" # OncePerProcess
+        const global_fail_fast = OncePerProcess{Bool}() do
+           return compat_get_bool_env("JULIA_TEST_FAILFAST", false)
+       end
+    else
+        const global_fail_fast = () -> compat_get_bool_env("JULIA_TEST_FAILFAST", false)
+    end
+    using .Test: push_testset, pop_testset
+    compat_push_testset = push_testset
+    compat_pop_testset = pop_testset
+    macro with_testset(ts, expr)
+        # :(@with(CURRENT_TESTSET => $(esc(ts)), TESTSET_DEPTH => get_testset_depth() + 1, $(esc(expr))))
+        quote
+            compat_push_testset($(esc(ts)))
+            $(esc(expr))
+            compat_pop_testset()
+        end
+    end
+end
 
 if VERSION >= v"1.9.0-DEV.623"
-    using .Test: FailFastError, FAIL_FAST
+    using .Test: FailFastError
 else
     struct FailFastError <: Exception end
-    FAIL_FAST = Ref{Bool}(false) # compat_get_bool_env("JULIA_TEST_FAILFAST", false)
 end
 
 if VERSION >= v"1.13.0-DEV.731"
@@ -61,6 +100,8 @@ else
     # FIXME: how to access the internal constructor for creating Error
 end
 
+# 0.7.0-DEV.1995
+using .Test: parse_testset_args
 
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
@@ -122,7 +163,7 @@ function _testset_forloop(args, testloop, source)
         # Trick to handle `break` and `continue` in the test code before
         # they can be handled properly by `finally` lowering.
         if !first_iteration
-            pop_testset()
+            compat_pop_testset()
             finish_errored = true
             push!(arr, finish(ts))
             finish_errored = false
@@ -166,7 +207,7 @@ function _testset_forloop(args, testloop, source)
         finally
             # Handle `return` in test body
             if !first_iteration && !finish_errored
-                pop_testset()
+                compat_pop_testset()
                 @assert @isdefined(ts) "Assertion to tell the compiler about the definedness of this variable"
                 push!(arr, finish(ts))
             end
@@ -207,7 +248,7 @@ function _testset_beginend_call(args, tests, source)
         else
             $(testsettype)($desc; $options...)
         end
-        push_testset(ts)
+        compat_push_testset(ts)
         # we reproduce the logic of guardseed, but this function
         # cannot be used as it changes slightly the semantic of @testset,
         # by wrapping the body in a function
@@ -234,7 +275,7 @@ function _testset_beginend_call(args, tests, source)
         finally
             copy!(default_rng(), default_rng_orig)
             copy!(Random.get_tls_seed(), tls_seed_orig)
-            pop_testset()
+            compat_pop_testset()
             ret = finish(ts)
         end
         ret
@@ -370,12 +411,12 @@ function _testset_context(args, ex, source)
 
     ex.args[2] = quote
         $(map(contexts) do context
-            :($push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
+            :($compat_push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
         end...)
         try
             $(test_ex)
         finally
-            $(map(_->:($pop_testset()), contexts)...)
+            $(map(_->:($compat_pop_testset()), contexts)...)
         end
     end
 
@@ -385,17 +426,5 @@ end
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
 
-compat_get_bool_env =
-    if VERSION >= v"1.11.0-DEV.1432"
-        Base.get_bool_env
-    else
-        function get_bool_env(name::String, default::Bool)::Bool
-            if haskey(ENV, name)
-                parse(Bool, getindex(ENV, name))
-            else
-                default
-            end
-        end
-    end
 
 # end # module Jive

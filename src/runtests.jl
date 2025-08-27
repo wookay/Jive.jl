@@ -2,7 +2,7 @@
 
 # some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
-using Test: Test, push_testset, pop_testset, get_testset_depth, get_testset
+using Test: Test
 using Distributed: Distributed, nprocs, addprocs
 using Printf: Printf
 
@@ -154,7 +154,7 @@ function runtests(dir::String ;
                   verbose::Bool = true)::Total
 
     # override_failfast
-    FAIL_FAST[] = override_failfast = compat_get_bool_env("JULIA_TEST_FAILFAST", failfast)
+    override_failfast = global_fail_fast()
 
     # override_targets
     override_targets = begin
@@ -228,7 +228,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         try
             jive_lets_dance(io, verbose, ts, context, filepath)
         catch _e
-            if Test.is_failfast_error(_e)
+            if is_failfast_error(_e)
                 failfast = true
             else
                 rethrow(_e)
@@ -267,11 +267,11 @@ function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, m
 end
 
 function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context::Union{Nothing, Module}, filepath::String)
-    push_testset(ts)
-    jive_start!(ts)
-    include_test_file(context, filepath)
-    jive_finish!(io, verbose, :jive, ts)
-    pop_testset()
+    @with_testset ts begin
+        jive_start!(ts)
+        include_test_file(context, filepath)
+        jive_finish!(io, verbose, :jive, ts)
+    end
 end
 
 function jive_start!(ts::JiveTestSet)
