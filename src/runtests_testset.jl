@@ -44,7 +44,7 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Union{Fail, Error}; p
     end
     push!(ts.results, t)
     if VERSION >= v"1.9.0-DEV.623"
-        (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+        ts.failfast && throw(FailFastError())
     end
     return t
 end
@@ -60,7 +60,7 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     # Hack: convert to `Fail` so that test summarization works correctly
     push!(ts.results, Fail(:test, t.orig_expr, t.logs, nothing, nothing, t.source, false))
     if VERSION >= v"1.9.0-DEV.623"
-        (FAIL_FAST[] || ts.failfast) && throw(FailFastError())
+        ts.failfast && throw(FailFastError())
     end
     return t
 end
@@ -109,9 +109,6 @@ macro testset(name::String, rest_args...)
         error("Expected function call, begin/end block or for loop as argument to @testset")
     end
 
-    # set by runtests(; failfast::Bool)
-    # FAIL_FAST[] = Base.get_bool_env("JULIA_TEST_FAILFAST", false)
-
     if tests.head === :for
         return compat_testset_forloop(args, tests, __source__)
     elseif tests.head === :let
@@ -132,9 +129,6 @@ macro testset(ex::Expr, rest_args...)
 
         error("Expected function call, begin/end block or for loop as argument to @testset")
     end
-
-    # set by runtests(; failfast::Bool)
-    # FAIL_FAST[] = Base.get_bool_env("JULIA_TEST_FAILFAST", false)
 
     if tests.head === :for
         return compat_testset_forloop(args, tests, __source__)
