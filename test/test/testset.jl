@@ -160,13 +160,3 @@ rng = VERSION >= v"1.7.0-DEV.1224" ? Random.Xoshiro(0x2e026445595ed28e, 0x07bb81
 end
 
 end # module test_testset_rng
-
-
-@If VERSION >= v"1.13.0-DEV.259" module test_testset_record_passes
-
-using Test
-
-# julia commit d9711317e8fe54a58cd05cc790b1ae7f0ac29749
-@test Test.record_passes() == Base.get_bool_env("JULIA_TEST_RECORD_PASSES", false)
-
-end # module test_testset_record_passes

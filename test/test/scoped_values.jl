@@ -16,4 +16,6 @@ using Test
     @test Test.TEST_RECORD_PASSES[] === false
 end
 
+@test Test.TEST_RECORD_PASSES[] === Base.get_bool_env("JULIA_TEST_RECORD_PASSES", false)
+
 end # module test_scoped_values
