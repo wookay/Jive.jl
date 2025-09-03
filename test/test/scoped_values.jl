@@ -18,4 +18,11 @@ end
 
 @test Test.TEST_RECORD_PASSES[] === Base.get_bool_env("JULIA_TEST_RECORD_PASSES", false)
 
+# Test.VERBOSE_TESTSETS
+# julia 1.13.0-DEV.1075
+# 0b392261107b76e91511bac4a82454b938b5c780
+if VERSION >= v"1.13.0-DEV.1075"
+@test Test.VERBOSE_TESTSETS[] === Base.get_bool_env("JULIA_TEST_VERBOSE", false)
+end
+
 end # module test_scoped_values
