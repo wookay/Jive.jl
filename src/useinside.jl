@@ -1,7 +1,7 @@
 # module Jive
 
 function _useinsde(mod::Module, expr::Expr)
-    quot = expr.args[3]
+    quot = last(expr.args)
     ret = nothing
     for x in quot.args
         ret = @eval(mod, $x)
