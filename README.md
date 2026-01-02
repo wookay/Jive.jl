@@ -19,6 +19,7 @@
   - [`@__REPL__`](#__repl__)
   - [Jive.delete](#Jive.delete)
   - [sprints](#sprints)
+  - [DaemonMode](#DaemonMode)
 
 
 # runtests
@@ -175,6 +176,14 @@ same for `Base.delete_method(only(methods(f, types)))`
 - `sprint_html` : get `Base.show` text/html output of the `x`
 
 See also [TestRunner.jl](https://github.com/aviatesk/TestRunner.jl).
+
+
+# DaemonMode
+using [DaemonMode.jl](https://github.com/dmolina/DaemonMode.jl)
+```
+alias jd="julia --startup-file=no -e 'using Jive, DaemonMode; serve()'  "
+alias jc="julia --startup-file=no -e 'using Jive, DaemonMode; runargs()'  "
+```
 
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
