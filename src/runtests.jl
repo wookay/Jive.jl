@@ -126,7 +126,7 @@ end
              targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
              skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-             context::Union{Nothing, Module} = nothing,
+             context_module::Union{Nothing, Module} = nothing,
              enable_distributed::Bool = true,
              node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              verbose::Bool = true)::Total
@@ -138,7 +138,7 @@ run the test files from the specific directory.
 * `targets`: filter targets and start. ` `(space) separated `String` or a `Vector{String}`. be overridden when `ARGS` are not empty.
 * `skip`: files or directories to skip. be overridden when the `ENV` variable `JIVE_SKIP` has set. `,`(comma) separated.
 * `testset`: filter testset. default is `nothing`.
-* `context`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
+* `context_module`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
 * `enable_distributed`: option for distributed. be overridden when the `ENV` variable `JIVE_PROCS` has set.
 * `node1`: run on node 1 during for the distributed tests.
 * `verbose`: print details of test execution
@@ -148,7 +148,7 @@ function runtests(dir::String ;
                   targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
                   skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-                  context::Union{Nothing, Module} = nothing,
+                  context_module::Union{Nothing, Module} = nothing,
                   enable_distributed::Bool = true,
                   node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   verbose::Bool = true)::Total
@@ -181,9 +181,9 @@ function runtests(dir::String ;
     (all_tests, start_idx) = get_all_files(dir, override_skip, override_targets)
 
     if enable_distributed && isdefined(@__MODULE__, :runtests_distributed_run)
-        return runtests_distributed_run(dir, all_tests, start_idx, node1, context, verbose, override_failfast)
+        return runtests_distributed_run(dir, all_tests, start_idx, node1, context_module, verbose, override_failfast)
     else
-        return normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
+        return normal_run(dir, all_tests, start_idx, context_module, verbose, override_failfast)
     end
 end
 
@@ -193,8 +193,8 @@ build_testset_filter(testset::Vector{<: AbstractString}) = in(testset)
 build_testset_filter(testset::Regex) = (x::AbstractString) -> match(testset, x) isa RegexMatch
 build_testset_filter(testset::Base.Callable) = testset
 
-function include_test_file(context::Union{Nothing, Module}, filepath::String)
-    if context === nothing
+function include_test_file(context_module::Union{Nothing, Module}, filepath::String)
+    if context_module === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
         Base.eval(m, quote
@@ -203,7 +203,7 @@ function include_test_file(context::Union{Nothing, Module}, filepath::String)
         end)
         Base.include(m, filepath)
     else
-        Base.include(context, filepath)
+        Base.include(context_module, filepath)
     end
 end
 
@@ -211,7 +211,7 @@ function got_anynonpass(tc)::Bool
     any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
     for (idx, subpath) in enumerate(tests)
@@ -226,7 +226,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context:
         description = jive_testset_description(numbering)
         ts = JiveTestSet(description)
         try
-            jive_lets_dance(io, verbose, ts, context, filepath)
+            jive_lets_dance(io, verbose, ts, context_module, filepath)
         catch _e
             if is_failfast_error(_e)
                 failfast = true
@@ -266,10 +266,10 @@ function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, m
     println(io)
 end
 
-function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context::Union{Nothing, Module}, filepath::String)
+function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context_module::Union{Nothing, Module}, filepath::String)
     @with_testset ts begin
         jive_start!(ts)
-        include_test_file(context, filepath)
+        include_test_file(context_module, filepath)
         jive_finish!(io, verbose, :jive, ts)
     end
 end

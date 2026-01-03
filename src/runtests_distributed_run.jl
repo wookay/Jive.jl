@@ -1,9 +1,9 @@
 # module Jive
 
-function runtests_distributed_run(dir, all_tests, start_idx, node1, context, verbose, override_failfast)
+function runtests_distributed_run(dir, all_tests, start_idx, node1, context_module, verbose, override_failfast)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs)
-        total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
+        total = normal_run(dir, all_tests, start_idx, context_module, verbose, override_failfast)
         return total
     else
         num_procs = nprocs()
@@ -15,10 +15,10 @@ function runtests_distributed_run(dir, all_tests, start_idx, node1, context, ver
             jive_procs >= num_procs && addprocs(jive_procs - num_procs + 1)
         end
         if nprocs() > 1
-            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context, verbose, override_failfast)
+            total = distributed_run(dir, all_tests, start_idx, path_separator_to_slash.(Vector{String}(node1)), context_module, verbose, override_failfast)
             return total
         else
-            total = normal_run(dir, all_tests, start_idx, context, verbose, override_failfast)
+            total = normal_run(dir, all_tests, start_idx, context_module, verbose, override_failfast)
             return total
         end
     end
@@ -27,18 +27,18 @@ end
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 using .Distributed: @everywhere, RemoteException, remotecall, remotecall_fetch, myid, nworkers, rmprocs, workers
 
-function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context::Union{Nothing,Module}, filepath::String, verbose::Bool, color::Bool)
+function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context_module::Union{Nothing,Module}, filepath::String, verbose::Bool, color::Bool)
     numbering = string(idx, /, num_tests)
     buf = IOBuffer()
     io = IOContext(buf, :color => color)
     verbose && jive_getting_on_the_floor(io, numbering, subpath, " (worker: $worker)")
     description = jive_testset_description(numbering)
     ts = JiveTestSet(description)
-    jive_lets_dance(io, verbose, ts, context, filepath)
+    jive_lets_dance(io, verbose, ts, context_module, filepath)
     (ts, buf)
 end
 
-function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
+function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "nworkers()", color=:cyan)
     printstyled(io, ": ", nworkers(), ", ")
@@ -83,7 +83,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             push!(node1_tests, (idx, subpath))
                         else
                             filepath = normpath(dir, slash_to_path_separator(subpath))
-                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
+                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, context_module, filepath, verbose, have_color())
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
                             tc = jive_accumulate_testset_data(io, verbose, total, ts)
@@ -104,7 +104,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
         worker = myid()
         for (idx, subpath) in node1_tests
             filepath = normpath(dir, slash_to_path_separator(subpath))
-            f = remotecall(runner, worker, worker, idx, num_tests, subpath, context, filepath, verbose, have_color())
+            f = remotecall(runner, worker, worker, idx, num_tests, subpath, context_module, filepath, verbose, have_color())
             (ts, buf) = fetch(f)
             verbose && print(io, String(take!(buf)))
             tc = jive_accumulate_testset_data(io, verbose, total, ts)
