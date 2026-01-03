@@ -197,9 +197,9 @@ function include_test_file(context::Union{Nothing, Module}, filepath::String)
     if context === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
-        Core.eval(m, quote
-            eval(x) = Core.eval($m, x)
-            include(x) = Base.include($m, x)
+        Base.eval(m, quote
+            eval(x) = Base.eval(@__MODULE__, x)
+            include(x) = Base.include(@__MODULE__, x)
         end)
         Base.include(m, filepath)
     else

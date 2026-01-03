@@ -23,9 +23,9 @@ function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fna
                     m = Module()
                     # Logging.global_logger(MinLevelLogger(FormatLogger(create_mylog(fname), sock), Logging.Info))
 
-                    Core.eval(m, quote
-                        eval(x) = Core.eval($m, x)
-                        include(x) = Base.include($m, x)
+                    Base.eval(m, quote
+                        eval(x) = Base.eval(@__MODULE__, x)
+                        include(x) = Base.include(@__MODULE__, x)
                         ARGS = $args
                         Base.PROGRAM_FILE::String = $fname
 
@@ -35,11 +35,11 @@ function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fna
                         exit(x) = throw(SystemExit(x))
                     end)
 
-                    out = Core.eval(m, quote
+                    out = Base.eval(m, quote
                         const stdout = IOBuffer()
                         stdout
                     end)
-                    err = Core.eval(m, quote
+                    err = Base.eval(m, quote
                         const stderr = IOBuffer()
                         stderr
                     end)
