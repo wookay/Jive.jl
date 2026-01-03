@@ -425,6 +425,4 @@ end
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
-
-
 # end # module Jive

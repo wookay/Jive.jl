@@ -20,6 +20,7 @@ DaemonMode = "d749ddd5-2b29-4920-8305-6ff5a704e36e"
 
 [extensions]
 DaemonModeExt = "DaemonMode"
+TestExt = "Test"
 
 [compat]
 Distributed  = "1.5, 1.6, 1.10, 1.11"
