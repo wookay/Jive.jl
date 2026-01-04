@@ -6,9 +6,10 @@ module TestExt
 if VERSION >= v"1.14.0-DEV.1453" # julia commit 243155034fe2301bc1bed2e05a335c9665926390
     using Test: @test
 elseif VERSION >= v"1.11"
-    using Test: test_expr!, get_test_result, record, get_testset, do_broken_test, trigger_test_failure_break,
-                Returned, ExecutionResult, Pass, Fail, Error, Threw
-    import Test: @test
+    using Test: test_expr!, get_test_result, record, get_testset,
+                trigger_test_failure_break, eval_test,
+                Returned, ExecutionResult, Pass, Fail, Broken, Threw
+    import Test: @test, Error
 
 # from julia/stdlib/Test/src/Test.jl
 # macro test(ex, kws...)
@@ -39,7 +40,7 @@ macro test(ex, kws::Expr...)
         if $(length(skip) > 0 && esc(skip[1]))
             record(get_testset(), Broken(:skipped, $ex))
         else
-            let _do = $(length(broken) > 0 && esc(broken[1])) ? do_broken_test : do_test_ext
+            let _do = $(length(broken) > 0 && esc(broken[1])) ? do_broken_test_ext : do_test_ext
                 _do($result, $ex, $ctx)
             end
         end
@@ -71,11 +72,40 @@ function do_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=
         # The predicate couldn't be evaluated without throwing an
         # exception, so that is an Error and not a Fail
         @assert isa(result, Threw)
-        testres = Error(:test_error, orig_expr, result.exception, result.current_exceptions, result.source, context_str)
+        if hasfield(Threw, :current_exceptions)
+            testres = Error(:test_error, orig_expr, result.exception, result.current_exceptions, result.source, context_str)
+        else
+            testres = Error(:test_error, orig_expr, result.exception, result.backtrace::Vector{Any}, result.source)
+        end
     end
     isa(testres, Pass) || trigger_test_failure_break(result)
     record(get_testset(), testres)
 end # function do_test
+
+# function Error(test_type::Symbol, orig_expr, value, bt, source::LineNumberNode)
+function Error(test_type::Symbol, orig_expr, value, excs::Union{Base.ExceptionStack,Nothing},
+                    source::LineNumberNode, context::Union{Nothing, String})
+    Error(test_type::Symbol, orig_expr, value, excs, source::LineNumberNode)
+end # function Error
+
+# function do_broken_test(result::ExecutionResult, @nospecialize(orig_expr), context=nothing)
+function do_broken_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=nothing)
+    testres = Broken(:test, orig_expr)
+    context_str = context === nothing ? nothing : sprint(show, context; context=:limit => true)
+    # Assume the test is broken and only change if the result is true
+    if isa(result, Returned)
+        value = result.value
+        if isa(value, Bool)
+            if value
+                testres = Error(:test_unbroken, orig_expr, value, nothing, result.source, context_str)
+            end
+        else
+            # If the result is non-Boolean, this counts as an Error
+            testres = Error(:test_nonbool, orig_expr, value, nothing, result.source, context_str)
+        end
+    end
+    record(get_testset(), testres)
+end # function do_broken_test
 
 # function Base.show(io::IO, t::Fail)
 function Base.show(io::Base.TTY, t::Fail)
