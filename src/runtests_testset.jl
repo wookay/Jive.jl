@@ -65,7 +65,7 @@ function record_dont_show_backtrace(ts::DefaultTestSet, t::Test.LogTestFailure)
     return t
 end
 
-import .Test: record, finish
+import .Test: record, finish, get_test_counts
 
 function record(ts::JiveTestSet, t::Union{Fail, Error, Test.LogTestFailure})
     return record_dont_show_backtrace(ts.default, t)
@@ -77,6 +77,10 @@ end
 
 function finish(ts::JiveTestSet)
     jive_finish!(Core.stdout, true, :test, ts)
+end
+
+function get_test_counts(ts::JiveTestSet)
+    get_test_counts(ts.default)
 end
 
 if VERSION >= v"1.12.0-DEV.1812" # julia commit 6136893eeed0c3559263a5aa465b630d2c7dc821
