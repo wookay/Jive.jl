@@ -120,6 +120,19 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
     (all_unique_files, start_idx)
 end
 
+function get_override_targets(dir::String, targets::Union{AbstractString, Vector{<: AbstractString}})::Vector{String}
+    if !isempty(ARGS) && basename(dir) == "test"
+        if isempty(PROGRAM_FILE) || basename(PROGRAM_FILE) == "runtests.jl"
+            return ARGS
+        end
+    end
+    if targets isa AbstractString
+        return split(targets) #  (space) separated
+    else
+        return targets
+    end
+end
+
 """
     runtests(dir::String ;
              failfast::Bool = false,
@@ -157,15 +170,7 @@ function runtests(dir::String ;
     override_failfast = global_fail_fast()
 
     # override_targets
-    override_targets = begin
-         if !isempty(ARGS) && basename(dir) == "test" && basename(PROGRAM_FILE) == "runtests.jl"
-             ARGS
-        elseif targets isa AbstractString
-            Vector{String}(split(targets)) #  (space) separated
-        else
-            Vector{String}(targets)
-        end
-    end
+    override_targets = get_override_targets(dir, targets)
 
     # override_skip
     override_skip = begin
