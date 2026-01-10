@@ -42,4 +42,4 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 DaemonMode = "d749ddd5-2b29-4920-8305-6ff5a704e36e" # julia 1.6
 
 [targets]
-test = ["Test", "Logging", "Random"]
+test = ["Test", "Logging", "Random", "DaemonMode"]
