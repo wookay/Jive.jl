@@ -18,11 +18,7 @@ function serverRunFile(sock::IO, shared::Bool, print_stack::Bool, reviser::Funct
 
         # Add it to allow ArgParse and similar packages
         empty!(ARGS)
-
-        for arg in args
-            push!(ARGS, arg)
-        end
-
+        push!(ARGS, args...)
         Base.PROGRAM_FILE = fname
 
         first_time[] = true

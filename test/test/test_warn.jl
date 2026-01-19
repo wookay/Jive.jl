@@ -15,7 +15,7 @@ end
 
 if stderr isa Base.TTY
     test_warnings()
-else
+elseif VERSION >= v"1.11"
     using Base.CoreLogging: ConsoleLogger, with_logger
     logger = ConsoleLogger()
     with_logger(test_warnings, logger)
