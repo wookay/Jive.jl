@@ -1,10 +1,44 @@
 module DaemonModeExt
 
-using DaemonMode: serverReplyError, token_ok_end
-import DaemonMode: serverRun
+using DaemonMode: parse_arguments, first_time, serverReplyError, token_ok_end, token_error_end
+import DaemonMode: serverRunFile, serverRun
 
 # code from DaemonMode.jl/src/DaemonMode.jl
-#     function serverRun(run, sock, shared, print_stack, fname, args, reviser)
+#        serverRunFile(sock, shared, print_stack, reviser)
+function serverRunFile(sock::IO, shared::Bool, print_stack::Bool, reviser::Function)
+    try
+        dir = readline(sock)
+        fname = readline(sock)
+        args_str = readline(sock)
+        args = parse_arguments(args_str)
+
+        if !isempty(args) && isempty(args[1])
+            empty!(args)
+        end
+
+        # Add it to allow ArgParse and similar packages
+        empty!(ARGS)
+
+        for arg in args
+            push!(ARGS, arg)
+        end
+
+        Base.PROGRAM_FILE = fname
+
+        first_time[] = true
+
+        cd(dir) do
+            serverRun(sock, shared, print_stack, fname, args, reviser) do mod
+                Base.include(mod, fname)
+            end
+        end
+    catch e
+        serverReplyError(sock, e)
+    end
+end # function serverRunFile(sock, shared, print_stack, reviser)
+
+# code from DaemonMode.jl/src/DaemonMode.jl
+#        serverRun(run, sock, shared, print_stack, fname, args, reviser)
 function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fname::String, args::Vector, reviser::Function)
     error = false
 
@@ -26,8 +60,6 @@ function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fna
                     Base.eval(m, quote
                         eval(x) = Base.eval(@__MODULE__, x)
                         include(x) = Base.include(@__MODULE__, x)
-                        ARGS = $args
-                        Base.PROGRAM_FILE::String = $fname
 
                         struct SystemExit <: Exception
                             code::Int32
@@ -129,6 +161,6 @@ function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fna
         end
     end
 
-end # function serverRun(run::Function, sock::IO, shared::Bool, print_stack::Bool, fname::String, args::Vector, reviser::Function)
+end # function serverRun(run, sock, shared, print_stack, fname, args, reviser)
 
 end # module DaemonModeExt
