@@ -156,7 +156,7 @@ run the test files from the specific directory.
 * `node1`: run on node 1 during for the distributed tests.
 * `verbose`: print details of test execution
 """
-function runtests(dir::String ;
+@inline function runtests(dir::String ;
                   failfast::Bool = false,
                   targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
                   skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
@@ -198,7 +198,7 @@ build_testset_filter(testset::Vector{<: AbstractString}) = in(testset)
 build_testset_filter(testset::Regex) = (x::AbstractString) -> match(testset, x) isa RegexMatch
 build_testset_filter(testset::Base.Callable) = testset
 
-function include_test_file(context_module::Union{Nothing, Module}, filepath::String)
+@inline function include_test_file(context_module::Union{Nothing, Module}, filepath::String)
     if context_module === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
@@ -216,7 +216,7 @@ function got_anynonpass(tc)::Bool
     any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
+@inline function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
     for (idx, subpath) in enumerate(tests)
@@ -271,7 +271,7 @@ function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, m
     println(io)
 end
 
-function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context_module::Union{Nothing, Module}, filepath::String)
+@inline function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context_module::Union{Nothing, Module}, filepath::String)
     @with_testset ts begin
         jive_start!(ts)
         include_test_file(context_module, filepath)
