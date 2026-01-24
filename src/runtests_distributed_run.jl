@@ -1,6 +1,6 @@
 # module Jive
 
-@inline function runtests_distributed_run(dir, all_tests, start_idx, node1, context_module, verbose, override_failfast)
+function runtests_distributed_run(dir, all_tests, start_idx, node1, context_module, verbose, override_failfast)
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs)
         total = normal_run(dir, all_tests, start_idx, context_module, verbose, override_failfast)
