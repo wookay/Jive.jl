@@ -38,6 +38,11 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, context_
     (ts, buf)
 end
 
+mutable struct RunningState
+    idx::Int
+    stop::Bool
+end
+
 function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{String}, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     printstyled(io, "nworkers()", color=:cyan)
@@ -48,12 +53,10 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
     printstyled(io, ": ", Sys.CPU_THREADS)
     println(io)
 
-    idx = 0
     num_tests = length(tests)
     index_subpath_dict = Dict{Int,Tuple{Int,String}}()
     total = Total()
     try
-        node1_tests = []
         if isfile(normpath(dir, "Project.toml"))
             project = Base.JLOptions().project
             if project != C_NULL
@@ -66,29 +69,30 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             end
         end
         @everywhere @eval(using Jive)
-        stop = false
+        node1_tests = []
+        state = RunningState(0, false)
         @sync begin
             for worker in workers()
                 @async begin
-                    while !stop && length(tests) > 0
-                        idx += 1
+                    while !state.stop && length(tests) > 0
+                        state.idx += 1
                         subpath = popfirst!(tests)
-                        index_subpath_dict[worker] = (idx, subpath)
-                        if idx < start_idx
-                            numbering = string(idx, /, num_tests)
+                        index_subpath_dict[worker] = (state.idx, subpath)
+                        if state.idx < start_idx
+                            numbering = string(state.idx, /, num_tests)
                             verbose && jive_getting_on_the_floor(io, numbering, subpath, " --")
                             continue
                         end
                         if any(x -> startswith(subpath, x), node1)
-                            push!(node1_tests, (idx, subpath))
+                            push!(node1_tests, (state.idx, subpath))
                         else
                             filepath = normpath(dir, slash_to_path_separator(subpath))
-                            f = remotecall(runner, worker, worker, idx, num_tests, subpath, context_module, filepath, verbose, have_color())
+                            f = remotecall(runner, worker, worker, state.idx, num_tests, subpath, context_module, filepath, verbose, have_color())
                             (ts, buf) = fetch(f)
                             verbose && print(io, String(take!(buf)))
                             tc = jive_accumulate_testset_data(io, verbose, total, ts)
                             if failfast && got_anynonpass(tc)
-                                stop = true
+                                state.stop = true
                                 break
                             end
                         end
@@ -98,7 +102,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                         rmprocs(worker, waitfor=0)
                     end
                 end # @async begin
-                stop && break
+                state.stop && break
             end # for worker in workers()
         end # @sync begin
         worker = myid()
