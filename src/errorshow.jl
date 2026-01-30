@@ -15,50 +15,80 @@ function frame_called_from_jive(frame::StackFrame)::Bool
 end
 
 if VERSION >= v"1.13.0-DEV.927" # julia commit 21d15ede0729a810458e2045f224e2e8a7db92e8
-     # from julia/base/errorshow.jl
-     # function print_stackframe(io, i, frame::StackFrame, ndigits_max::Int, max_nested_cycles::Int, nactive_cycles::Int, ncycle_starts::Int, modulecolordict, modulecolorcycler; prefix = nothing)
-     function _print_stackframe(io, i, frame::StackFrame, ndigits_max::Int, max_nested_cycles::Int, nactive_cycles::Int, ncycle_starts::Int, modulecolordict, modulecolorcycler; prefix = nothing)
-         m = Base.parentmodule(frame)
-         modulecolor = if m !== nothing
-             m = Base.parentmodule_before_main(m)
-             get!(() -> popfirst!(modulecolorcycler), modulecolordict, m)
-         else
-             :default
-         end
-         Base.print_stackframe(io, i, frame, ndigits_max, max_nested_cycles, nactive_cycles, ncycle_starts, modulecolor; prefix)
-     end # function _print_stackframe
+using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
+import Base: show_processed_backtrace
+# from julia/base/errorshow.jl
+# function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
+function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
+    println(io)
+    prefix === nothing || print(io, prefix)
+    println(io, "Stacktrace:")
 
-    import Base: print_stackframe
-    # from julia/base/errorshow.jl
-    # function print_stackframe(io, i, frame::StackFrame, ndigits_max::Int, max_nested_cycles::Int, nactive_cycles::Int, ncycle_starts::Int, modulecolordict, modulecolorcycler; prefix = nothing)
-    function print_stackframe(io::IO, i::Int, frame::StackFrame, ndigits_max::Int, max_nested_cycles::Int, nactive_cycles::Int, ncycle_starts::Int, modulecolordict, modulecolorcycler; prefix = nothing)
-        if !frame_called_from_jive(frame)
-            _print_stackframe(io, i, frame, ndigits_max, max_nested_cycles, nactive_cycles, ncycle_starts, modulecolordict, modulecolorcycler; prefix)
+    ndigits_max = ndigits(num_frames)
+
+    push!(repeated_cycles, (0,0,0)) # repeated_cycles is never empty
+
+    frame_counter = 1
+    current_cycles = NTuple{4, Int}[] # adding a value to track amount to advance frame_counter when cycle is closed
+
+    for i in eachindex(trace)
+        (frame, n) = trace[i]
+        if frame_called_from_jive(frame)
+            frame_counter += 1
+            continue
         end
-    end # function print_stackframe
+
+        ncycle_starts = 0
+        while repeated_cycles[1][1] == i
+            cycle = popfirst!(repeated_cycles)
+            push!(current_cycles, (cycle..., cycle[2] * (cycle[3] - 1)))
+            ncycle_starts += 1
+        end
+        if n > 1
+            push!(current_cycles, (i, 1, n, n - 1))
+            ncycle_starts += 1
+        end
+        nactive_cycles = length(current_cycles)
+
+        Base.print_stackframe(io, frame_counter, frame, ndigits_max, max_nested_cycles, nactive_cycles, ncycle_starts, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS; prefix)
+
+        frame_counter, nactive_cycles = Base._backtrace_print_repetition_closings!(io, i, current_cycles, frame_counter, max_nested_cycles, nactive_cycles, ndigits_max; prefix)
+        frame_counter += 1
+
+        if i < length(trace)
+            println(io)
+            print_linebreaks && println(io)
+        end
+    end
+end # function show_processed_backtrace
+    # if
 
 elseif VERSION >= v"1.11"
-    using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
-    import Base: show_full_backtrace
-    # from julia/base/errorshow.jl
-    # function show_full_backtrace(io::IO, trace::Vector; print_linebreaks::Bool, prefix=nothing)
-    function show_full_backtrace(io::IOContext{IOBuffer}, trace::Vector; print_linebreaks::Bool, prefix=nothing)
-        num_frames = length(trace)
-        ndigits_max = ndigits(num_frames)
+using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
+import Base: show_full_backtrace
+# from julia/base/errorshow.jl
+# function show_full_backtrace(io::IO, trace::Vector; print_linebreaks::Bool, prefix=nothing)
+function show_full_backtrace(io::IOContext, trace::Vector; print_linebreaks::Bool, prefix=nothing)
+    num_frames = length(trace)
+    ndigits_max = ndigits(num_frames)
 
-        println(io)
-        prefix === nothing || print(io, prefix)
-        println(io, "Stacktrace:")
+    println(io)
+    prefix === nothing || print(io, prefix)
+    println(io, "Stacktrace:")
 
-        for (i, (frame, n)) in enumerate(trace)
-            frame_called_from_jive(frame) && continue
-            Base.print_stackframe(io, i, frame, n, ndigits_max, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS)
-            if i < num_frames
-                println(io)
-                print_linebreaks && println(io)
-            end
+    for (i, (frame, n)) in enumerate(trace)
+        if frame_called_from_jive(frame)
+            continue
         end
-    end # function show_full_backtrace
-end
+        Base.print_stackframe(io, i, frame, n, ndigits_max, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS)
+        if i < num_frames
+            println(io)
+            print_linebreaks && println(io)
+        end
+    end
+end # function show_full_backtrace
+    # elseif
+
+end # if
 
 # module Jive
