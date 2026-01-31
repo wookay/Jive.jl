@@ -2,14 +2,23 @@
 
 using Base.StackTraces: StackFrame
 
-function frame_called_from_jive(frame::StackFrame)::Bool
-    if Base.parentmodule(frame) === (@__MODULE__)
+HIDE_STACKFRAME_IN_MODULES::Set{Module} = Set([(@__MODULE__)])
+
+# override this function if you want to
+# Jive.check_to_hide_the_stackframe(frame::Base.StackTraces.StackFrame)::Bool
+function check_to_hide_the_stackframe(frame)::Bool
+    if Base.parentmodule(frame) in HIDE_STACKFRAME_IN_MODULES
         return true
-    elseif Symbol("macro expansion") === frame.func
+    elseif frame.func === Symbol("macro expansion")
+        target_macro_expansions::Set{String} = Set([
+            "Test/src/Test.jl",
+        ])
         frame_file = String(frame.file)
-        if endswith(frame_file, "Jive/src/runtests.jl") || endswith(frame_file, "Jive/src/compat.jl")
-            return true
+        for suffix in target_macro_expansions
+            endswith(frame_file, suffix) && return true
         end
+    # elseif frame.func === :include && frame.file === Symbol("./Base.jl")
+    #     return true
     end
     return false
 end
@@ -33,7 +42,7 @@ function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int,
 
     for i in eachindex(trace)
         (frame, n) = trace[i]
-        if frame_called_from_jive(frame)
+        if check_to_hide_the_stackframe(frame)
             frame_counter += 1
             continue
         end
@@ -77,7 +86,7 @@ function show_full_backtrace(io::IOContext, trace::Vector; print_linebreaks::Boo
     println(io, "Stacktrace:")
 
     for (i, (frame, n)) in enumerate(trace)
-        if frame_called_from_jive(frame)
+        if check_to_hide_the_stackframe(frame)
             continue
         end
         Base.print_stackframe(io, i, frame, n, ndigits_max, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS)
