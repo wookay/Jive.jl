@@ -1,28 +1,29 @@
 # module Jive
 
-using Base.StackTraces: StackFrame
-
 if VERSION >= v"1.11"
 HIDE_STACKFRAME_IN_MODULES #= ::Set{Module} =# = Set([(@__MODULE__)])
 
 # override this function if you want to
-# Jive.check_to_hide_the_stackframe(frame::Base.StackTraces.StackFrame)::Bool
-function check_to_hide_the_stackframe(frame)::Bool
+# Jive.showable_stackframe(frame::Base.StackTraces.StackFrame)::Bool
+function showable_stackframe(frame)::Bool
     if Base.parentmodule(frame) in HIDE_STACKFRAME_IN_MODULES
-        return true
+        return false
     elseif frame.func === Symbol("macro expansion")
         target_macro_expansions::Set{String} = Set([
+            "Jive/src/runtests.jl",
+            "Jive/src/compat.jl",
             "Test/src/Test.jl",
         ])
         frame_file = String(frame.file)
         for suffix in target_macro_expansions
-            endswith(frame_file, suffix) && return true
+            endswith(frame_file, suffix) && return false
         end
     # elseif frame.func === :include && frame.file === Symbol("./Base.jl")
-    #     return true
+    #     return false
     end
-    return false
-end # function check_to_hide_the_stackframe
+    return true
+end # function showable_stackframe
+
 end # if VERSION >= v"1.11"
 
 
@@ -45,7 +46,7 @@ function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int,
 
     for i in eachindex(trace)
         (frame, n) = trace[i]
-        if check_to_hide_the_stackframe(frame)
+        if !showable_stackframe(frame)
             frame_counter += 1
             continue
         end
@@ -73,7 +74,7 @@ function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int,
         end
     end
 end # function show_processed_backtrace
-    # if
+    # if VERSION >= v"1.13.0-DEV.927"
 
 elseif VERSION >= v"1.11"
 using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
@@ -89,7 +90,7 @@ function show_full_backtrace(io::IOContext, trace::Vector; print_linebreaks::Boo
     println(io, "Stacktrace:")
 
     for (i, (frame, n)) in enumerate(trace)
-        if check_to_hide_the_stackframe(frame)
+        if !showable_stackframe(frame)
             continue
         end
         Base.print_stackframe(io, i, frame, n, ndigits_max, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS)
@@ -99,7 +100,7 @@ function show_full_backtrace(io::IOContext, trace::Vector; print_linebreaks::Boo
         end
     end
 end # function show_full_backtrace
-    # elseif
+    # elseif VERSION >= v"1.11"
 
 end # if
 
