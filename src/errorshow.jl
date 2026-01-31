@@ -2,7 +2,8 @@
 
 using Base.StackTraces: StackFrame
 
-HIDE_STACKFRAME_IN_MODULES::Set{Module} = Set([(@__MODULE__)])
+if VERSION >= v"1.11"
+HIDE_STACKFRAME_IN_MODULES #= ::Set{Module} =# = Set([(@__MODULE__)])
 
 # override this function if you want to
 # Jive.check_to_hide_the_stackframe(frame::Base.StackTraces.StackFrame)::Bool
@@ -21,7 +22,9 @@ function check_to_hide_the_stackframe(frame)::Bool
     #     return true
     end
     return false
-end
+end # function check_to_hide_the_stackframe
+end # if VERSION >= v"1.11"
+
 
 if VERSION >= v"1.13.0-DEV.927" # julia commit 21d15ede0729a810458e2045f224e2e8a7db92e8
 using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
