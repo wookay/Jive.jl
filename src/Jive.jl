@@ -1,5 +1,9 @@
 module Jive
 
+using Test: Test
+export runtests
+include("runtests.jl")
+
 export @skip
 include("skip.jl")
 
@@ -20,9 +24,6 @@ include("__REPL__.jl")
 
 export @time_expr
 include("time_expr.jl")
-
-export runtests
-include("runtests.jl")
 
 export watch
 include("watch.jl")

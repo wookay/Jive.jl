@@ -2,10 +2,11 @@
 
 # some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
-using Test: Test
 using Printf: Printf
 
-global jive_testset_filter = nothing
+global jive_testset_filter = nothing # be used at
+                                     #   `macro testset(name::String, rest_args...)` in compat.jl
+                                     #   `runtests(dir::String ; ...)` in runtests.jl
 
 struct CompileTiming
     compile::UInt64
@@ -99,7 +100,14 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
         all_unique_files = unique(all_files)
     end
     (all_unique_files, start_idx)
-end
+end # function get_all_files
+
+# build_testset_filter
+build_testset_filter(::Nothing) = nothing
+build_testset_filter(testset_filter::AbstractString) = ==(testset_filter)
+build_testset_filter(testset_filter::Vector{<: AbstractString}) = in(testset_filter)
+build_testset_filter(testset_filter::Regex) = (x::AbstractString) -> match(testset_filter, x) isa RegexMatch
+build_testset_filter(testset_filter::Base.Callable) = testset_filter
 
 function get_override_targets(dir::String, targets::Union{AbstractString, Vector{<: AbstractString}})::Vector{String}
     if !isempty(ARGS) && basename(dir) == "test"
@@ -112,7 +120,7 @@ function get_override_targets(dir::String, targets::Union{AbstractString, Vector
     else
         return targets
     end
-end
+end # function get_override_targets
 
 """
     runtests(dir::String ;
@@ -171,7 +179,7 @@ function runtests(dir::String ;
     else
         return normal_run(dir, all_tests, start_idx, into, verbose, override_failfast)
     end
-end
+end # function runtests
 
 function include_test_file(into::Union{Nothing, Module}, filepath::String)
     if into === nothing
@@ -213,7 +221,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, into::Un
     end
     verbose && jive_report(io, total)
     return total
-end
+end # function normal_run
 
 function accumulate!(total::Total, tc::TestCounts, compiled::CompileTiming)
     total.compile_time   += compiled.compile
@@ -229,7 +237,7 @@ function accumulate!(total::Total, tc::TestCounts, compiled::CompileTiming)
     total.n_fails  += total_fail
     total.n_errors += total_error
     total.n_broken += total_broken
-end
+end # function accumulate!
 
 function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, msg::String)::Nothing
     printstyled(io, numbering, color=:underline)
@@ -244,7 +252,7 @@ end
 
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
 using .compat_ScopedValues: with, CURRENT_TESTSET, TESTSET_DEPTH
-end
+end # if
 function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::CompileTiming
     elapsed_time_start = time_ns()
     _print_testset_verbose(:enter, ts)
@@ -269,7 +277,7 @@ function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{
     recompile_time = recompile_time - recompile_time_start
     elapsed_time   = time_ns() - elapsed_time_start
     CompileTiming(compile_time, recompile_time, elapsed_time)
-end
+end # function jive_lets_dance
 
 function jive_print_counts(io::IO, tc::TestCounts, compiled::CompileTiming)
     passes = tc.cumulative_passes + tc.passes
@@ -303,7 +311,7 @@ function jive_print_counts(io::IO, tc::TestCounts, compiled::CompileTiming)
     end
 
     printed && print_elapsed_times(io, compiled.compile, compiled.recompile, compiled.elapsed)
-end
+end # function jive_print_counts
 
 function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
     print(io, repeat(' ', 2), "(")
@@ -316,7 +324,7 @@ function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt6
     end
     Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
     println(io, ")")
-end
+end # function print_elapsed_times
 
 function jive_report(io::IO, total::Total)
     # total = total_pass + total_fail + total_error + total_broken
@@ -349,6 +357,6 @@ function jive_report(io::IO, total::Total)
         print(io, " been completed.")
         print_elapsed_times(io, total.compile_time, total.recompile_time, total.elapsed_time)
     end
-end
+end # function jive_report
 
 # module Jive

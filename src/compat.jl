@@ -1,19 +1,21 @@
 # module Jive
 
-using .Test: get_testset_depth, get_testset
-using .Test: Error, Broken
-using .Test: parse_testset_args # 0.7.0-DEV.1995
-using .Test: AbstractTestSet
-using .Test: _check_testset, default_rng, finish, Random, DefaultTestSet, print_test_results, record
+using .Test: AbstractTestSet, DefaultTestSet,
+             get_testset, get_testset_depth, _check_testset,
+             record, finish, print_test_results,
+             parse_testset_args, # 0.7.0-DEV.1995
+             Pass, Error, Broken,
+             Random, default_rng
 
-function jive_print_testset_verbose(action::Symbol, ts::AbstractTestSet)
+# override this function if you want to
+# Jive.jive_print_testset_verbose(action::Symbol, ts::Test.AbstractTestSet)
+function jive_print_testset_verbose(action::Symbol, ts)
 end
 
-# jive_testset_filter (global defined in runtests.jl)
 
 # code from julia/stdlib/Test/src/Test.jl
 
-# compat
+# cumulative_compile_timing, cumulative_compile_time_ns
 cumulative_compile_timing, cumulative_compile_time_ns = begin
     # julia commit 7074f04228d6149c2cefaa16064f30739f31da13
     if isdefined(Base, :cumulative_compile_timing)
@@ -74,7 +76,7 @@ end
 # +    orig_expr::String
 # +    data::Union{Nothing, String}
 # +    value::String
-if VERSION >= v"1.9.0-DEV.1055"
+if VERSION >= v"1.9.0-DEV.1055" # julia commit ff1b563e3c
     using .Test: Fail
 else
     import .Test: Fail
@@ -92,8 +94,9 @@ function scrub_backtrace(bt, file_ts, file_t)
 end
 end # if VERSION >= v"1.10.0-DEV.1171"
 
+# TestCounts, get_test_counts
 if VERSION >= v"1.11.0-DEV.1529" # julia commit 9523361974
-    using .Test: get_test_counts, TestCounts
+    using .Test: TestCounts, get_test_counts
 else
 struct TestCounts
     customized::Bool
@@ -106,7 +109,7 @@ struct TestCounts
     cumulative_errors::Int
     cumulative_broken::Int
     duration::String
-end
+end # if
 format_duration(::AbstractTestSet) = "?s"
 anynonpass(tc::TestCounts) = (tc.fails + tc.errors + tc.cumulative_fails + tc.cumulative_errors > 0)
 get_test_counts(ts::AbstractTestSet) = TestCounts(false, 0,0,0,0,0,0,0,0, format_duration(ts))
@@ -136,6 +139,7 @@ function get_test_counts(ts::DefaultTestSet)
     # Memoize for printing convenience
     return tc
 end # function get_test_counts
+    # if
 end # if VERSION >= v"1.11.0-DEV.1529"
 
 if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c5
@@ -186,7 +190,8 @@ else
             compat_pop_testset()
         end
     end
-end
+end # if
+
 
 module compat_ScopedValues
 
@@ -212,7 +217,9 @@ else
         verbose
     end
 end # if
-end # module compat_ScopedValues
+
+end # module Jive.compat_ScopedValues
+
 
 if VERSION >= v"1.13.0-DEV.1075" # julia commit 0b39226110
     using .Test: VERBOSE_TESTSETS
@@ -280,6 +287,7 @@ function record(c::ContextTestSet, t::Fail)
     end
     record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, message_only))
 end # function record
+    # if
 
 # Generate the code for an `@testset` with a `let` argument.
 function _testset_context(args, ex, source)
@@ -323,6 +331,7 @@ function _testset_context(args, ex, source)
 
     return esc(ex)
 end # function _testset_context
+    # if
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
@@ -377,7 +386,7 @@ function compat_get_bool_env(name::String, default::Bool)::Bool
             default
         end
     end
-end
+end # function compat_get_bool_env
 
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
@@ -559,14 +568,6 @@ else # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _
     compat_testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
 end # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
-
-# @testset
-build_testset_filter(::Nothing) = nothing
-build_testset_filter(testset::AbstractString) = ==(testset)
-build_testset_filter(testset::Vector{<: AbstractString}) = in(testset)
-build_testset_filter(testset::Regex) = (x::AbstractString) -> match(testset, x) isa RegexMatch
-build_testset_filter(testset::Base.Callable) = testset
-
 function default_testset_ignored_keys()::Set{Symbol}
     ignore_keys = Set{Symbol}()
     if VERSION < v"1.12.0-DEV.1812"
@@ -579,16 +580,16 @@ function default_testset_ignored_keys()::Set{Symbol}
         end
     end
     ignore_keys
-end
+end # function default_testset_ignored_keys
 
-function compat_testset(exprs...)
+function compat_default_testset(exprs...)
     ignore_keys = default_testset_ignored_keys()
     filter(expr -> !(expr.head === :(=) && expr.args[1] in ignore_keys), exprs)
 end
 
 import .Test: @testset
 macro testset(expr::Expr...)
-    args = compat_testset(expr...,)
+    args = compat_default_testset(expr...,)
     isempty(args) && error("No arguments to @testset")
 
     tests = args[end]
@@ -606,15 +607,16 @@ macro testset(expr::Expr...)
     else
         return compat_testset_beginend_call(args, tests, __source__)
     end
-end
+end # macro testset(expr::Expr...)
 
+# jive_testset_filter (global defined in runtests.jl)
 macro testset(name::String, rest_args...)
     global jive_testset_filter
     if jive_testset_filter !== nothing
         !jive_testset_filter(name) && return nothing
     end
 
-    args = (name, compat_testset(rest_args...)...)
+    args = (name, compat_default_testset(rest_args...)...)
     isempty(args) && error("No arguments to @testset")
 
     tests = args[end]
@@ -632,6 +634,6 @@ macro testset(name::String, rest_args...)
     else
         return compat_testset_beginend_call(args, tests, __source__)
     end
-end
+end # macro testset(name::String, rest_args...)
 
 # end # module Jive

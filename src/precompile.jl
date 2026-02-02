@@ -15,7 +15,7 @@ end # if
 #=    6.4 ms =# precompile(Tuple{typeof(Base.getproperty), NamedTuple{(:value, :output, :error, :backtrace), Tuple{Jive.Total, String, Bool, Array{Ptr{Nothing}, 1}}}, Symbol})
 
 # compat.jl
-#=  116.5 ms =# precompile(Tuple{typeof(Jive.compat_testset), Expr, Vararg{Expr}})
+#=  116.5 ms =# precompile(Tuple{typeof(Jive.compat_default_testset), Expr, Vararg{Expr}})
 # compat.jl - Jive._testset_beginend_call
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336"
 #=   54.8 ms =# precompile(Tuple{typeof(Jive._testset_beginend_call), Tuple{String, Expr, Expr}, Expr, LineNumberNode})

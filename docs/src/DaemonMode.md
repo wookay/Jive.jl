@@ -7,6 +7,6 @@ alias jc="julia -e 'using Jive, DaemonMode; runargs()'  "
 
 using [Doors.jl](https://github.com/wookay/Doors.jl)
 ```
-alias jd="julia -e 'using Doors; serve()'  "
-alias jc="julia -e 'using Doors; runargs()'  "
+alias jd="julia -i -e 'using Doors; serve()'  "
+alias jc="julia    -e 'using Doors; runargs()'  "
 ```
