@@ -3,7 +3,7 @@
 using .Test: get_testset_depth, get_testset
 using .Test: Error, Broken
 using .Test: parse_testset_args # 0.7.0-DEV.1995
-using .Test: AbstractTestSet, ContextTestSet
+using .Test: AbstractTestSet
 using .Test: _check_testset, default_rng, finish, Random, DefaultTestSet, print_test_results, record
 
 function jive_print_testset_verbose(action::Symbol, ts::AbstractTestSet)
@@ -214,28 +214,117 @@ else
 end # if
 end # module compat_ScopedValues
 
-
 if VERSION >= v"1.13.0-DEV.1075" # julia commit 0b39226110
     using .Test: VERBOSE_TESTSETS
     import .Test: print_testset_verbose
-    function print_testset_verbose(action::Symbol, ts::DefaultTestSet)
-        jive_print_testset_verbose(action, ts)
-    end
-    function print_testset_verbose(action::Symbol, ts::ContextTestSet)
-        jive_print_testset_verbose(action, ts)
-    end
 else
     using .compat_ScopedValues: CURRENT_TESTSET, TESTSET_DEPTH, LazyScopedValue
     const VERBOSE_TESTSETS = LazyScopedValue{Bool}() do # OncePerProcess{Bool}
         return compat_get_bool_env("JULIA_TEST_VERBOSE", false)
     end
-    function print_testset_verbose(action::Symbol, ts::DefaultTestSet)
-        jive_print_testset_verbose(action, ts)
-    end
+end # if
+
+function print_testset_verbose(action::Symbol, ts::DefaultTestSet)
+    jive_print_testset_verbose(action, ts)
+end
+
+# testset_context
+# @testset let
+#
+# v"1.9.0-DEV.1061" # 6f737f165e1c373cc8674bc8b5b4e345c1e915b9
+# struct ContextTestSet <: AbstractTestSet
+#-    context_sym::Symbol
+#+    context_name::Union{Symbol, Expr}
+#
+# v"1.9.0-DEV.1055" # ff1b563e3c6f3ee419de0f792c5ff42744448f1c
+# +struct ContextTestSet <: AbstractTestSet
+#+    parent_ts::AbstractTestSet
+#+    context_sym::Symbol
+#+    context::Any
+if VERSION >= v"1.9.0-DEV.1055" # julia commit ff1b563e3c
+    compat_testset_context = Test.testset_context
+    using .Test: ContextTestSet
     function print_testset_verbose(action::Symbol, ts::ContextTestSet)
         jive_print_testset_verbose(action, ts)
     end
+else
+    import .Test: record
+"""
+    ContextTestSet
+
+Passes test failures through to the parent test set, while adding information
+about a context object that is being tested.
+"""
+struct ContextTestSet <: AbstractTestSet
+    parent_ts::AbstractTestSet
+    context_name::Union{Symbol, Expr}
+    context::Any
 end
+
+function ContextTestSet(name::Union{Symbol, Expr}, @nospecialize(context))
+    if (name isa Expr) && (name.head != :tuple)
+        error("Invalid syntax: $(name)")
+    end
+    return ContextTestSet(get_testset(), name, context)
+end # function ContextTestSet
+record(c::ContextTestSet, t) = record(c.parent_ts, t)
+function record(c::ContextTestSet, t::Fail)
+    context = string(c.context_name, " = ", c.context)
+    if VERSION >= v"1.9.0-DEV.1055"
+        context = t.context === nothing ? context : string(t.context, "\n              ", context)
+    end
+    if VERSION >= v"1.8.0-DEV.363"
+        message_only = t.message_only
+    else
+        message_only = false
+    end
+    record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, message_only))
+end # function record
+
+# Generate the code for an `@testset` with a `let` argument.
+function _testset_context(args, ex, source)
+    desc, testsettype, options = parse_testset_args(args[1:end-1])
+    if desc !== nothing || testsettype !== nothing
+        # Reserve this syntax if we ever want to allow this, but for now,
+        # just do the transparent context test set.
+        error("@testset with a `let` argument cannot be customized")
+    end
+
+    let_ex = ex.args[1]
+
+    if Meta.isexpr(let_ex, :(=))
+        contexts = Any[let_ex.args[1]]
+    elseif Meta.isexpr(let_ex, :block)
+        contexts = Any[]
+        for assign_ex in let_ex.args
+            if Meta.isexpr(assign_ex, :(=))
+                push!(contexts, assign_ex.args[1])
+            else
+                error("Malformed `let` expression is given")
+            end
+        end
+    else
+        error("Malformed `let` expression is given")
+    end
+    reverse!(contexts)
+
+    test_ex = ex.args[2]
+
+    ex.args[2] = quote
+        $(map(contexts) do context
+            :($compat_push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
+        end...)
+        try
+            $(test_ex)
+        finally
+            $(map(_->:($compat_pop_testset()), contexts)...)
+        end
+    end
+
+    return esc(ex)
+end # function _testset_context
+    compat_testset_context = _testset_context
+end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
 # function print_testset_verbose(action::Symbol, ts::AbstractTestSet)
 function _print_testset_verbose(action::Symbol, ts::AbstractTestSet)
@@ -277,7 +366,7 @@ function _print_testset_verbose(action::Symbol, ts::AbstractTestSet)
     end
 end # function _print_testset_verbose
 
-### compat_
+### compat
 function compat_get_bool_env(name::String, default::Bool)::Bool
     if VERSION >= v"1.11.0-DEV.1432"
         Base.get_bool_env(name, default)
@@ -470,99 +559,6 @@ else # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _
     compat_testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
 end # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
-# testset_context
-# @testset let
-#
-# v"1.9.0-DEV.1061" # 6f737f165e1c373cc8674bc8b5b4e345c1e915b9
-# struct ContextTestSet <: AbstractTestSet
-#-    context_sym::Symbol
-#+    context_name::Union{Symbol, Expr}
-#
-# v"1.9.0-DEV.1055" # ff1b563e3c6f3ee419de0f792c5ff42744448f1c
-# +struct ContextTestSet <: AbstractTestSet
-#+    parent_ts::AbstractTestSet
-#+    context_sym::Symbol
-#+    context::Any
-if VERSION >= v"1.9.0-DEV.1055"
-    compat_testset_context = Test.testset_context
-else
-    import .Test: record
-"""
-    ContextTestSet
-
-Passes test failures through to the parent test set, while adding information
-about a context object that is being tested.
-"""
-struct ContextTestSet <: AbstractTestSet
-    parent_ts::AbstractTestSet
-    context_name::Union{Symbol, Expr}
-    context::Any
-end
-
-function ContextTestSet(name::Union{Symbol, Expr}, @nospecialize(context))
-    if (name isa Expr) && (name.head != :tuple)
-        error("Invalid syntax: $(name)")
-    end
-    return ContextTestSet(get_testset(), name, context)
-end # function ContextTestSet
-record(c::ContextTestSet, t) = record(c.parent_ts, t)
-function record(c::ContextTestSet, t::Fail)
-    context = string(c.context_name, " = ", c.context)
-    if VERSION >= v"1.9.0-DEV.1055"
-        context = t.context === nothing ? context : string(t.context, "\n              ", context)
-    end
-    if VERSION >= v"1.8.0-DEV.363"
-        message_only = t.message_only
-    else
-        message_only = false
-    end
-    record(c.parent_ts, Fail(t.test_type, t.orig_expr, t.data, t.value, context, t.source, message_only))
-end # function record
-
-# Generate the code for an `@testset` with a `let` argument.
-function _testset_context(args, ex, source)
-    desc, testsettype, options = parse_testset_args(args[1:end-1])
-    if desc !== nothing || testsettype !== nothing
-        # Reserve this syntax if we ever want to allow this, but for now,
-        # just do the transparent context test set.
-        error("@testset with a `let` argument cannot be customized")
-    end
-
-    let_ex = ex.args[1]
-
-    if Meta.isexpr(let_ex, :(=))
-        contexts = Any[let_ex.args[1]]
-    elseif Meta.isexpr(let_ex, :block)
-        contexts = Any[]
-        for assign_ex in let_ex.args
-            if Meta.isexpr(assign_ex, :(=))
-                push!(contexts, assign_ex.args[1])
-            else
-                error("Malformed `let` expression is given")
-            end
-        end
-    else
-        error("Malformed `let` expression is given")
-    end
-    reverse!(contexts)
-
-    test_ex = ex.args[2]
-
-    ex.args[2] = quote
-        $(map(contexts) do context
-            :($compat_push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
-        end...)
-        try
-            $(test_ex)
-        finally
-            $(map(_->:($compat_pop_testset()), contexts)...)
-        end
-    end
-
-    return esc(ex)
-end # function _testset_context
-    compat_testset_context = _testset_context
-end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
 # @testset
 build_testset_filter(::Nothing) = nothing
