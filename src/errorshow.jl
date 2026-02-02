@@ -10,9 +10,9 @@ function showable_stackframe(frame)::Bool
         return false
     elseif frame.func === Symbol("macro expansion")
         target_macro_expansions::Set{String} = Set([
-            "Jive/src/runtests.jl",
-            "Jive/src/compat.jl",
-            "Test/src/Test.jl",
+            # "Jive/src/runtests.jl",
+            # "Jive/src/compat.jl",
+            # "Test/src/Test.jl",
         ])
         frame_file = String(frame.file)
         for suffix in target_macro_expansions

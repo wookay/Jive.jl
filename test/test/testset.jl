@@ -119,15 +119,16 @@ end # module test_testset_results
 
 using Test
 
+# Mock parent testset that just captures results
+struct MockParentTestSet <: Test.AbstractTestSet
+    results::Vector{Any}
+    MockParentTestSet() = new([])
+end
+Test.record(ts::MockParentTestSet, t) = (push!(ts.results, t); t)
+Test.finish(ts::MockParentTestSet) = ts
+
 # from julia/stdlib/Test/test/runtests.jl  # julia commit 76d5b14c9c280c52b2c275e6cf449fe1ba7fc8d2
 @testset "Context display in @testset let blocks" begin
-    # Mock parent testset that just captures results
-    struct MockParentTestSet <: Test.AbstractTestSet
-        results::Vector{Any}
-        MockParentTestSet() = new([])
-    end
-    Test.record(ts::MockParentTestSet, t) = (push!(ts.results, t); t)
-    Test.finish(ts::MockParentTestSet) = ts
 
     @testset "context shown when a context testset fails" begin
         mock_parent1 = MockParentTestSet()

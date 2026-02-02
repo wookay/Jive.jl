@@ -3,39 +3,15 @@
 # some code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
 
 using Test: Test
-using Distributed: Distributed, nprocs, addprocs
 using Printf: Printf
-
-# compat
-cumulative_compile_timing, cumulative_compile_time_ns = begin
-    # julia commit 7074f04228d6149c2cefaa16064f30739f31da13
-    if isdefined(Base, :cumulative_compile_timing)
-        (Base.cumulative_compile_timing, Base.cumulative_compile_time_ns)
-    else
-        if VERSION >= v"1.6.0-DEV.1819" && isdefined(Base, :cumulative_compile_time_ns_before)
-            ref_compile_timing = Ref{Bool}()
-            function compile_timing(b::Bool)
-                ref_compile_timing[] = b
-            end
-            function compile_time_ns()
-                compile_time = ref_compile_timing[] ? Base.cumulative_compile_time_ns_before() : Base.cumulative_compile_time_ns_after()
-                (compile_time, UInt64(0))
-            end
-            (compile_timing, compile_time_ns)
-        elseif VERSION >= v"1.6.0-DEV.1088" && isdefined(Base, :cumulative_compile_time_ns)
-            ((::Bool) -> nothing, () -> (Base.cumulative_compile_time_ns(), UInt64(0)))
-        else
-            ((::Bool) -> nothing, () -> (UInt64(0), UInt64(0)))
-        end
-    end
-end
 
 global jive_testset_filter = nothing
 
-include("compat.jl")
-include("runtests_testset.jl")
-include("runtests_distributed_run.jl")
-include("errorshow.jl")
+struct CompileTiming
+    compile::UInt64
+    recompile::UInt64
+    elapsed::UInt64
+end
 
 mutable struct Total
     compile_time::UInt64
@@ -50,6 +26,10 @@ mutable struct Total
         new(UInt64(0), UInt64(0), UInt64(0), 0, 0, 0, 0, 0)
     end
 end
+
+include("compat.jl") # jive_testset_filter (using global)
+include("runtests_distributed_run.jl")
+include("errorshow.jl")
 
 struct FinishedWithErrorsException <: Exception
 end
@@ -139,8 +119,8 @@ end
              failfast::Bool = false,
              targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
              skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
-             testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-             context_module::Union{Nothing, Module} = nothing,
+             filter_testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
+             into::Union{Nothing, Module} = nothing,
              enable_distributed::Bool = true,
              node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              verbose::Bool = true)::Total
@@ -151,8 +131,8 @@ run the test files from the specific directory.
 * `failfast`: aborting on the first failure. be overridden when the `ENV` variable `JULIA_TEST_FAILFAST` has set.
 * `targets`: filter targets and start. ` `(space) separated `String` or a `Vector{String}`. be overridden when `ARGS` are not empty.
 * `skip`: files or directories to skip. be overridden when the `ENV` variable `JIVE_SKIP` has set. `,`(comma) separated.
-* `testset`: filter testset. default is `nothing`.
-* `context_module`: module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
+* `testset_filter`: filter testset. default is `nothing`.
+* `into`: a module that to be used in `Base.include`. `nothing` means to be safe that using anonymous module for every test file.
 * `enable_distributed`: option for distributed. be overridden when the `ENV` variable `JIVE_PROCS` has set.
 * `node1`: run on node 1 during for the distributed tests.
 * `verbose`: print details of test execution
@@ -161,8 +141,8 @@ function runtests(dir::String ;
                   failfast::Bool = false,
                   targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
                   skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
-                  testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
-                  context_module::Union{Nothing, Module} = nothing,
+                  testset_filter::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
+                  into::Union{Nothing, Module} = nothing,
                   enable_distributed::Bool = true,
                   node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   verbose::Bool = true)::Total
@@ -183,24 +163,18 @@ function runtests(dir::String ;
         end
     end
 
-    global jive_testset_filter = build_testset_filter(testset)
+    global jive_testset_filter = build_testset_filter(testset_filter)
     (all_tests, start_idx) = get_all_files(dir, override_skip, override_targets)
 
     if enable_distributed && isdefined(@__MODULE__, :runtests_distributed_run)
-        return runtests_distributed_run(dir, all_tests, start_idx, node1, context_module, verbose, override_failfast)
+        return runtests_distributed_run(dir, all_tests, start_idx, node1, into, verbose, override_failfast)
     else
-        return normal_run(dir, all_tests, start_idx, context_module, verbose, override_failfast)
+        return normal_run(dir, all_tests, start_idx, into, verbose, override_failfast)
     end
 end
 
-build_testset_filter(::Nothing) = nothing
-build_testset_filter(testset::AbstractString) = ==(testset)
-build_testset_filter(testset::Vector{<: AbstractString}) = in(testset)
-build_testset_filter(testset::Regex) = (x::AbstractString) -> match(testset, x) isa RegexMatch
-build_testset_filter(testset::Base.Callable) = testset
-
-function include_test_file(context_module::Union{Nothing, Module}, filepath::String)
-    if context_module === nothing
+function include_test_file(into::Union{Nothing, Module}, filepath::String)
+    if into === nothing
         m = Module()
         # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
         Base.eval(m, quote
@@ -209,15 +183,15 @@ function include_test_file(context_module::Union{Nothing, Module}, filepath::Str
         end)
         Base.include(m, filepath)
     else
-        Base.include(context_module, filepath)
+        Base.include(into, filepath)
     end
 end
 
 function got_anynonpass(tc)::Bool
-    any(!iszero, (tc.fails, tc.c_fails, tc.errors, tc.c_errors))
+    any(!iszero, (tc.fails, tc.errors))
 end
 
-function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context_module::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
+function normal_run(dir::String, tests::Vector{String}, start_idx::Int, into::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
     for (idx, subpath) in enumerate(tests)
@@ -230,39 +204,31 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, context_
         verbose && jive_getting_on_the_floor(io, numbering, subpath, "")
         filepath = normpath(dir, slash_to_path_separator(subpath))
         description = jive_testset_description(numbering)
-        ts = JiveTestSet(description)
-        try
-            jive_lets_dance(io, verbose, ts, context_module, filepath)
-        catch _e
-            if is_failfast_error(_e)
-                failfast = true
-            else
-                rethrow(_e)
-            end
-        end # try
-        tc = jive_accumulate_testset_data(io, verbose, total, ts)
+        ts = DefaultTestSet(description)
+        compiled::CompileTiming = jive_lets_dance(io, verbose, ts, into, filepath)
+        tc::TestCounts = get_test_counts(ts)
+        verbose && jive_print_counts(io, tc, compiled)
+        accumulate!(total, tc, compiled)
         failfast && got_anynonpass(tc) && break
     end
     verbose && jive_report(io, total)
     return total
 end
 
-function jive_accumulate_testset_data(io::IO, verbose::Bool, total::Total, ts::JiveTestSet)
-    total.compile_time   += ts.compile_time
-    total.recompile_time += ts.recompile_time
-    total.elapsed_time   += ts.elapsed_time
-    tc = jive_get_test_counts(ts)
-    verbose && jive_print_counts(io, ts, tc)
-    total.n_passes  += tc.passes  + tc.c_passes
-    total.n_fails   += tc.fails   + tc.c_fails
-    total.n_errors  += tc.errors  + tc.c_errors
-    total.n_broken  += tc.broken  + tc.c_broken
-    total.n_skipped += tc.skipped + tc.c_skipped
-    tc
-end
+function accumulate!(total::Total, tc::TestCounts, compiled::CompileTiming)
+    total.compile_time   += compiled.compile
+    total.recompile_time += compiled.recompile
+    total.elapsed_time   += compiled.elapsed
 
-function jive_testset_description(numbering)::String
-    numbering
+    total_pass   = tc.cumulative_passes + tc.passes
+    total_fail   = tc.cumulative_fails  + tc.fails 
+    total_error  = tc.cumulative_errors + tc.errors
+    total_broken = tc.cumulative_broken + tc.broken
+
+    total.n_passes += total_pass
+    total.n_fails  += total_fail
+    total.n_errors += total_error
+    total.n_broken += total_broken
 end
 
 function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, msg::String)::Nothing
@@ -272,85 +238,44 @@ function jive_getting_on_the_floor(io::IO, numbering::String, subpath::String, m
     println(io)
 end
 
-function jive_lets_dance(io::IO, verbose::Bool, ts::JiveTestSet, context_module::Union{Nothing, Module}, filepath::String)
-    @with_testset ts begin
-        jive_start!(ts)
-        include_test_file(context_module, filepath)
-        jive_finish!(io, verbose, :jive, ts)
-    end
+function jive_testset_description(numbering)::String
+    numbering
 end
 
-function jive_start!(ts::JiveTestSet)
+if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
+using .compat_ScopedValues: with, CURRENT_TESTSET, TESTSET_DEPTH
+end
+function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::CompileTiming
     elapsed_time_start = time_ns()
+    _print_testset_verbose(:enter, ts)
     cumulative_compile_timing(true)
-    compile_time, recompile_time = cumulative_compile_time_ns()
-    ts.compile_time_start   = compile_time
-    ts.recompile_time_start = recompile_time
-    ts.elapsed_time_start   = elapsed_time_start
-end
-
-function jive_finish!(io::IO, verbose::Bool, from::Symbol, ts::JiveTestSet)
+    (compile_time, recompile_time) = cumulative_compile_time_ns()
+    compile_time_start   = compile_time
+    recompile_time_start = recompile_time
+    elapsed_time_start   = elapsed_time_start
+    if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
+        with(CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1) do
+            include_test_file(into, filepath)
+        end
+    else
+        compat_push_testset(ts)
+        include_test_file(into, filepath)
+        compat_pop_testset()
+    end
     cumulative_compile_timing(false)
-    compile_time, recompile_time = cumulative_compile_time_ns()
-    ts.compile_time   = compile_time - ts.compile_time_start
-    ts.recompile_time = recompile_time - ts.recompile_time_start
-    ts.elapsed_time   = time_ns() - ts.elapsed_time_start
-
-    if from === :test
-        if get_testset_depth() != 0
-            # Attach this test set to the parent test set
-            parent_ts = get_testset()
-            record(parent_ts, ts)
-        end
-    end
-
-    ts
+    _print_testset_verbose(:exit, ts)
+    (compile_time, recompile_time) = cumulative_compile_time_ns()
+    compile_time   = compile_time - compile_time_start
+    recompile_time = recompile_time - recompile_time_start
+    elapsed_time   = time_ns() - elapsed_time_start
+    CompileTiming(compile_time, recompile_time, elapsed_time)
 end
 
-function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
-    print(io, repeat(' ', 2), "(")
-    if compile_time > 0
-        Printf.@printf(io, "compile: %.2f, ", compile_time / 1e9)
-        if recompile_time > 0
-            Printf.@printf(io, "recompile: %.2f, ", recompile_time / 1e9)
-        end
-        Printf.@printf(io, "elapsed: ")
-    end
-    Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
-    println(io, ")")
-end
-
-function jive_get_test_counts(ts::JiveTestSet)
-      passes,   fails,   errors,   broken,   skipped = ts.default.n_passed, 0, 0, 0, 0
-    c_passes, c_fails, c_errors, c_broken, c_skipped = 0,                   0, 0, 0, 0
-    for t in ts.default.results
-        isa(t, Fail)   && (fails  += 1)
-        isa(t, Error)  && (errors += 1)
-        if isa(t, Test.Broken)
-            if t.test_type === :skipped
-                skipped += 1
-            else
-                broken += 1
-            end
-        end
-        if isa(t, JiveTestSet)
-            tc = jive_get_test_counts(t)
-            c_passes  += tc.passes  + tc.c_passes
-            c_fails   += tc.fails   + tc.c_fails
-            c_errors  += tc.errors  + tc.c_errors
-            c_broken  += tc.broken  + tc.c_broken
-            c_skipped += tc.skipped + tc.c_skipped
-        end
-    end
-    return (; passes=passes, fails=fails, errors=errors, broken=broken, c_passes=c_passes, c_fails=c_fails, c_errors=c_errors, c_broken=c_broken, skipped=skipped, c_skipped=c_skipped)
-end
-
-function jive_print_counts(io::IO, ts::JiveTestSet, tc)
-    passes::Int  = tc.passes  + tc.c_passes
-    fails::Int   = tc.fails   + tc.c_fails
-    errors::Int  = tc.errors  + tc.c_errors
-    broken::Int  = tc.broken  + tc.c_broken
-    skipped::Int = tc.skipped + tc.c_skipped
+function jive_print_counts(io::IO, tc::TestCounts, compiled::CompileTiming)
+    passes = tc.cumulative_passes + tc.passes
+    fails  = tc.cumulative_fails  + tc.fails
+    errors = tc.cumulative_errors + tc.errors
+    broken = tc.cumulative_broken + tc.broken
 
     printed = false
     if passes > 0
@@ -377,16 +302,24 @@ function jive_print_counts(io::IO, ts::JiveTestSet, tc)
         printed = true
     end
 
-    if skipped > 0
-        printstyled(io, "    Skip: "; bold=true, color=Base.warn_color())
-        printstyled(io, skipped; color=Base.warn_color())
-        printed = true
-    end
+    printed && print_elapsed_times(io, compiled.compile, compiled.recompile, compiled.elapsed)
+end
 
-    printed && print_elapsed_times(io, ts.compile_time, ts.recompile_time, ts.elapsed_time)
+function print_elapsed_times(io::IO, compile_time::UInt64, recompile_time::UInt64, elapsed_time::UInt64)
+    print(io, repeat(' ', 2), "(")
+    if compile_time > 0
+        Printf.@printf(io, "compile: %.2f, ", compile_time / 1e9)
+        if recompile_time > 0
+            Printf.@printf(io, "recompile: %.2f, ", recompile_time / 1e9)
+        end
+        Printf.@printf(io, "elapsed: ")
+    end
+    Printf.@printf(io, "%.2f seconds", elapsed_time / 1e9)
+    println(io, ")")
 end
 
 function jive_report(io::IO, total::Total)
+    # total = total_pass + total_fail + total_error + total_broken
     n_passes::Int, n_fails::Int, n_errors::Int, n_broken::Int, n_skipped::Int =
         total.n_passes, total.n_fails, total.n_errors, total.n_broken, total.n_skipped
 
