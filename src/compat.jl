@@ -180,14 +180,12 @@ else
     compat_pop_testset = pop_testset
     macro with_testset(ts, expr)
         quote
-            compat_push_testset($(esc(ts)))
             print_testset_verbose(:enter, $(esc(ts)))
             try
                 $(esc(expr))
             finally
                 print_testset_verbose(:exit, $(esc(ts)))
             end
-            compat_pop_testset()
         end
     end
 end # if
@@ -520,7 +518,7 @@ function _testset_beginend_call(args, tests, source)
         else
             $(testsettype)($desc; $options...)
         end
-        # compat_push_testset(ts)
+        compat_push_testset(ts)
         # we reproduce the logic of guardseed, but this function
         # cannot be used as it changes slightly the semantic of @testset,
         # by wrapping the body in a function
@@ -549,7 +547,7 @@ function _testset_beginend_call(args, tests, source)
         finally
             copy!(default_rng(), default_rng_orig)
             copy!(Random.get_tls_seed(), tls_seed_orig)
-            # compat_pop_testset()
+            compat_pop_testset()
             ret = finish(ts)
         end
         ret

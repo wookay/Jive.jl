@@ -36,8 +36,7 @@ function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, into::Un
     verbose && jive_getting_on_the_floor(io, numbering, subpath, " (worker: $worker)")
     description = jive_testset_description(numbering)
     ts = DefaultTestSet(description)
-    compiled::CompileTiming = jive_lets_dance(io, verbose, ts, into, filepath)
-    tc::TestCounts = get_test_counts(ts)
+    (compiled::CompileTiming, tc::TestCounts) = jive_lets_dance(io, verbose, ts, into, filepath)
     verbose && jive_print_counts(io, tc, compiled)
     (tc, compiled, buf)
 end

@@ -213,8 +213,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, into::Un
         filepath = normpath(dir, slash_to_path_separator(subpath))
         description = jive_testset_description(numbering)
         ts = DefaultTestSet(description)
-        compiled::CompileTiming = jive_lets_dance(io, verbose, ts, into, filepath)
-        tc::TestCounts = get_test_counts(ts)
+        (compiled::CompileTiming, tc::TestCounts) = jive_lets_dance(io, verbose, ts, into, filepath)
         verbose && jive_print_counts(io, tc, compiled)
         accumulate!(total, tc, compiled)
         failfast && got_anynonpass(tc) && break
@@ -253,9 +252,9 @@ end
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
 using .compat_ScopedValues: with, CURRENT_TESTSET, TESTSET_DEPTH
 end # if
-function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::CompileTiming
+function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::Tuple{CompileTiming,TestCounts}
     elapsed_time_start = time_ns()
-    _print_testset_verbose(:enter, ts)
+    verbose && _print_testset_verbose(:enter, ts)
     cumulative_compile_timing(true)
     (compile_time, recompile_time) = cumulative_compile_time_ns()
     compile_time_start   = compile_time
@@ -264,18 +263,20 @@ function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{
     if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
         @noinline do_include_test_file() = include_test_file(into, filepath)
         with(do_include_test_file, CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1)
+        tc = get_test_counts(ts)
     else
         compat_push_testset(ts)
         include_test_file(into, filepath)
         compat_pop_testset()
+        tc = get_test_counts(ts)
     end
     cumulative_compile_timing(false)
-    _print_testset_verbose(:exit, ts)
     (compile_time, recompile_time) = cumulative_compile_time_ns()
     compile_time   = compile_time - compile_time_start
     recompile_time = recompile_time - recompile_time_start
     elapsed_time   = time_ns() - elapsed_time_start
-    CompileTiming(compile_time, recompile_time, elapsed_time)
+    verbose && _print_testset_verbose(:exit, ts)
+    (CompileTiming(compile_time, recompile_time, elapsed_time), tc)
 end # function jive_lets_dance
 
 function jive_print_counts(io::IO, tc::TestCounts, compiled::CompileTiming)
