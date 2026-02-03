@@ -262,9 +262,8 @@ function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{
     recompile_time_start = recompile_time
     elapsed_time_start   = elapsed_time_start
     if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
-        with(CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1) do
-            include_test_file(into, filepath)
-        end
+        @noinline do_include_test_file() = include_test_file(into, filepath)
+        with(do_include_test_file, CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1)
     else
         compat_push_testset(ts)
         include_test_file(into, filepath)

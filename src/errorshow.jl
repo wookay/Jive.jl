@@ -1,18 +1,17 @@
 # module Jive
 
 if VERSION >= v"1.11"
-HIDE_STACKFRAME_IN_MODULES #= ::Set{Module} =# = Set([(@__MODULE__)])
 
 # override this function if you want to
 # Jive.showable_stackframe(frame::Base.StackTraces.StackFrame)::Bool
 function showable_stackframe(frame)::Bool
+    HIDE_STACKFRAME_IN_MODULES = Set([@__MODULE__])
     if Base.parentmodule(frame) in HIDE_STACKFRAME_IN_MODULES
         return false
     elseif frame.func === Symbol("macro expansion")
         target_macro_expansions::Set{String} = Set([
-            # "Jive/src/runtests.jl",
-            # "Jive/src/compat.jl",
-            # "Test/src/Test.jl",
+            "Jive/src/compat.jl",
+            "Jive/ext/TestExt.jl",
         ])
         frame_file = String(frame.file)
         for suffix in target_macro_expansions
@@ -77,29 +76,49 @@ end # function show_processed_backtrace
     # if VERSION >= v"1.13.0-DEV.927"
 
 elseif VERSION >= v"1.11"
-using Base: STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS
-import Base: show_full_backtrace
+using Base: InterpreterIP, BIG_STACKTRACE_SIZE, process_backtrace, show_reduced_backtrace,
+            show_full_backtrace, stacktrace_linebreaks, update_stackframes_callback
+using Base.StackTraces: StackFrame
+import Base: show_backtrace
 # from julia/base/errorshow.jl
-# function show_full_backtrace(io::IO, trace::Vector; print_linebreaks::Bool, prefix=nothing)
-function show_full_backtrace(io::IOContext, trace::Vector; print_linebreaks::Bool, prefix=nothing)
-    num_frames = length(trace)
-    ndigits_max = ndigits(num_frames)
+# function show_backtrace(io::IO, t::Vector; prefix=nothing)
+function show_backtrace(io::IO, t::Vector{StackFrame}; prefix=nothing)
+    _show_backtrace(io, t; prefix)
+end
+function show_backtrace(io::IO, t::Vector{Union{Ptr{Nothing}, InterpreterIP}}; prefix=nothing)
+    _show_backtrace(io, t; prefix)
+end
+function _show_backtrace(io::IO, t::Vector; prefix=nothing)
+    if haskey(io, :last_shown_line_infos)
+        empty!(io[:last_shown_line_infos])
+    end
 
-    println(io)
-    prefix === nothing || print(io, prefix)
-    println(io, "Stacktrace:")
+    # t is a pre-processed backtrace (ref #12856)
+    if t isa Vector{Any} && (length(t) == 0 || t[1] isa Tuple{StackFrame,Int})
+        filtered = t
+    else
+        filtered = filter(x -> showable_stackframe(x[1]), process_backtrace(t))
+    end
+    isempty(filtered) && return
 
-    for (i, (frame, n)) in enumerate(trace)
-        if !showable_stackframe(frame)
-            continue
-        end
-        Base.print_stackframe(io, i, frame, n, ndigits_max, STACKTRACE_FIXEDCOLORS, STACKTRACE_MODULECOLORS)
-        if i < num_frames
-            println(io)
-            print_linebreaks && println(io)
+    if length(filtered) == 1 && Base.StackTraces.is_top_level_frame(filtered[1][1])
+        f = filtered[1][1]::StackFrame
+        if f.line == 0 && f.file === :var""
+            # don't show a single top-level frame with no location info
+            return
         end
     end
-end # function show_full_backtrace
+
+    if length(filtered) > BIG_STACKTRACE_SIZE
+        show_reduced_backtrace(IOContext(io, :backtrace => true), filtered; prefix)
+        return
+    else
+        try invokelatest(update_stackframes_callback[], filtered) catch end
+        # process_backtrace returns a Vector{Tuple{Frame, Int}}
+        show_full_backtrace(io, filtered; print_linebreaks = stacktrace_linebreaks() #=, prefix =#)
+    end
+    nothing
+end # function show_backtrace
     # elseif VERSION >= v"1.11"
 
 end # if
