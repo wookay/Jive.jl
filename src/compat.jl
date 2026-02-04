@@ -422,7 +422,7 @@ function _testset_forloop(args, testloop, source)
     end
 
     if testsettype === nothing
-        testsettype = :(get_testset_depth() == 0 ? compat_DefaultTestSet : typeof(get_testset()))
+        testsettype = :(get_testset_depth() == 0 ? DefaultTestSet : typeof(get_testset()))
     end
 
     # Uses a similar block as for `@testset`, except that it is
@@ -439,7 +439,7 @@ function _testset_forloop(args, testloop, source)
             finish_errored = false
             copy!(default_rng(), tls_seed)
         end
-        ts = if ($testsettype === $compat_DefaultTestSet) && $(isa(source, LineNumberNode))
+        ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode))
             $(testsettype)($desc; source=$(QuoteNode(source.file)), $options..., rng=tls_seed)
         else
             $(testsettype)($desc; $options...)
@@ -502,7 +502,7 @@ function _testset_beginend_call(args, tests, source)
     # If we're at the top level we'll default to DefaultTestSet. Otherwise
     # default to the type of the parent testset
     if testsettype === nothing
-        testsettype = :(get_testset_depth() == 0 ? compat_DefaultTestSet : typeof(get_testset()))
+        testsettype = :(get_testset_depth() == 0 ? DefaultTestSet : typeof(get_testset()))
     end
 
     tests = insert_toplevel_latestworld(tests)
@@ -514,7 +514,7 @@ function _testset_beginend_call(args, tests, source)
     ex = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
         local ret
-        local ts = if ($testsettype === $compat_DefaultTestSet) && $(isa(source, LineNumberNode))
+        local ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode))
             $(testsettype)($desc; source=$(QuoteNode(source.file)), $options...)
         else
             $(testsettype)($desc; $options...)
@@ -566,12 +566,6 @@ else # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _
     compat_testset_forloop = Test.testset_forloop
     compat_testset_beginend_call = VERSION >= v"1.8.0-DEV.809" ? Test.testset_beginend_call : Test.testset_beginend
 end # if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
-
-function compat_DefaultTestSet(desc::String; kwargs...)::DefaultTestSet
-    ignore_keys = default_testset_ignored_keys()
-    filtered_kwargs = filter(kwarg -> !(first(kwarg) in ignore_keys), kwargs)
-    DefaultTestSet(desc; filtered_kwargs...)
-end
 
 function default_testset_ignored_keys()::Set{Symbol}
     ignore_keys = Set{Symbol}()
