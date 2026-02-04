@@ -254,7 +254,6 @@ using .compat_ScopedValues: with, CURRENT_TESTSET, TESTSET_DEPTH
 end # if
 function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::Tuple{CompileTiming,TestCounts}
     elapsed_time_start = time_ns()
-    verbose && _print_testset_verbose(:enter, ts)
     cumulative_compile_timing(true)
     (compile_time, recompile_time) = cumulative_compile_time_ns()
     compile_time_start   = compile_time
@@ -275,7 +274,7 @@ function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{
     compile_time   = compile_time - compile_time_start
     recompile_time = recompile_time - recompile_time_start
     elapsed_time   = time_ns() - elapsed_time_start
-    verbose && _print_testset_verbose(:exit, ts)
+    verbose && print_testset_summary(:exit, ts)
     (CompileTiming(compile_time, recompile_time, elapsed_time), tc)
 end # function jive_lets_dance
 

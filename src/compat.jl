@@ -333,8 +333,9 @@ end # function _testset_context
     compat_testset_context = _testset_context
 end # if VERSION >= v"1.9.0-DEV.1055" # _testset_context
 
-# function print_testset_verbose(action::Symbol, ts::AbstractTestSet)
-function _print_testset_verbose(action::Symbol, ts::AbstractTestSet)
+# code from
+# function Test.print_testset_verbose(action::Symbol, ts::AbstractTestSet)
+function print_testset_summary(action::Symbol, ts::AbstractTestSet)
     env_verbose = something(compat_ScopedValues.get(VERBOSE_TESTSETS))
     !env_verbose && return
     depth_pad = get_testset_depth()
@@ -371,7 +372,7 @@ function _print_testset_verbose(action::Symbol, ts::AbstractTestSet)
         end
         # println("$(indent)Finished testset: $desc$duration_str")
     end
-end # function _print_testset_verbose
+end # function print_testset_summary
 
 ### compat
 function compat_get_bool_env(name::String, default::Bool)::Bool
