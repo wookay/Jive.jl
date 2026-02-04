@@ -3,6 +3,10 @@
 if VERSION >= v"1.11"
 
 # override this function if you want to
+#
+# see also julia/base/errorshow.jl
+# function _backtrace_simplify_include_frames!(trace)
+#
 # Jive.showable_stackframe(frame::Base.StackTraces.StackFrame)::Bool
 function showable_stackframe(frame)::Bool
     HIDE_STACKFRAME_IN_MODULES = Set([@__MODULE__])
