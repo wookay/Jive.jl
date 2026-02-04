@@ -1,7 +1,8 @@
 module DaemonModeExt
 
-using DaemonMode: parse_arguments, first_time, serverReplyError, token_ok_end, token_error_end
-import DaemonMode: serverRunFile, serverRun
+using DaemonMode: DaemonMode
+using .DaemonMode: first_time, serverReplyError, token_ok_end, token_error_end
+import .DaemonMode: serverRunFile, serverRun
 
 # code from DaemonMode.jl/src/DaemonMode.jl
 #        serverRunFile(sock, shared, print_stack, reviser)
@@ -10,7 +11,7 @@ function serverRunFile(sock::IO, shared::Bool, print_stack::Bool, reviser::Funct
         dir = readline(sock)
         fname = readline(sock)
         args_str = readline(sock)
-        args = parse_arguments(args_str)
+        args = DaemonMode.parse_arguments(args_str)
 
         if !isempty(args) && isempty(args[1])
             empty!(args)
