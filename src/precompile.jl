@@ -16,6 +16,7 @@ end # if
 
 # compat.jl
 #=  116.5 ms =# precompile(Tuple{typeof(Jive.compat_default_testset), Expr, Vararg{Expr}})
+#=    7.2 ms =# precompile(Tuple{typeof(Jive.compat_default_testset), Expr})
 # compat.jl - Jive._testset_beginend_call
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336"
 #=   54.8 ms =# precompile(Tuple{typeof(Jive._testset_beginend_call), Tuple{String, Expr, Expr}, Expr, LineNumberNode})
