@@ -38,7 +38,7 @@ jobs:
     - uses: julia-actions/julia-runtest@v1
     - name: versioninfo
       run: |
-           julia -e 'using InteractiveUtils; versioninfo()'
+           julia -e 'using InteractiveUtils; versioninfo(); dump(Base.GIT_VERSION_INFO)'
 
   RunMoreTests:
     needs: Test
@@ -65,7 +65,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
       - name: versioninfo
         run: |
-             julia -e 'using InteractiveUtils; versioninfo()'
+             julia -e 'using InteractiveUtils; versioninfo(); dump(Base.GIT_VERSION_INFO)'
 
   RunForWindows:
     needs: RunMoreTests
@@ -79,7 +79,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
       - name: versioninfo
         run: |
-             julia -e 'using InteractiveUtils; versioninfo()'
+             julia -e 'using InteractiveUtils; versioninfo(); dump(Base.GIT_VERSION_INFO)'
 
   RunForJulia154:
     needs: RunMoreTests
@@ -95,7 +95,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
       - name: versioninfo
         run: |
-             julia -e 'using InteractiveUtils; versioninfo()'
+             julia -e 'using InteractiveUtils; versioninfo(); dump(Base.GIT_VERSION_INFO)'
 
   Coverage:
     needs: RunMoreTests
