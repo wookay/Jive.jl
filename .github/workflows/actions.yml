@@ -51,7 +51,7 @@ jobs:
     - uses: julia-actions/julia-buildpkg@v1
     - name: RunMoreTests
       run: |
-           julia --color=yes -e 'using Pkg; Pkg.develop("Jive"); Pkg.develop(url="https://github.com/wookay/TestJiveRunMoreTests.jl"); Pkg.test("TestJiveRunMoreTests")'
+           JULIA_TEST_VERBOSE=true julia --color=yes -e 'using Pkg; Pkg.develop("Jive"); Pkg.develop(url="https://github.com/wookay/TestJiveRunMoreTests.jl"); Pkg.test("TestJiveRunMoreTests")'
 
   RunForMacOS:
     needs: RunMoreTests
