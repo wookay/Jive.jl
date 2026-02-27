@@ -40,6 +40,18 @@ jobs:
       run: |
            julia -e 'using InteractiveUtils; versioninfo(); dump(Base.GIT_VERSION_INFO)'
 
+  RunJETLS:
+    needs: Test
+    if: github.event.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - uses: aviatesk/JETLS.jl/.github/actions/check@release
+      with:
+        files: src/Jive.jl test/runtests.jl
+        exit-severity: error
+        show-severity: warn
+
   RunMoreTests:
     needs: Test
     if: github.event.ref == 'refs/heads/master'
