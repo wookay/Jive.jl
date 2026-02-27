@@ -94,6 +94,7 @@ function scrub_backtrace(bt, file_ts, file_t)
 end
 end # if VERSION >= v"1.10.0-DEV.1171"
 
+
 # TestCounts, get_test_counts
 if VERSION >= v"1.11.0-DEV.1529" # julia commit 9523361974
     using .Test: TestCounts, get_test_counts
@@ -111,7 +112,6 @@ struct TestCounts
     duration::String
 end # if
 format_duration(::AbstractTestSet) = "?s"
-anynonpass(tc::TestCounts) = (tc.fails + tc.errors + tc.cumulative_fails + tc.cumulative_errors > 0)
 get_test_counts(ts::AbstractTestSet) = TestCounts(false, 0,0,0,0,0,0,0,0, format_duration(ts))
 function get_test_counts(ts::DefaultTestSet)
     passes, fails, errors, broken = ts.n_passed, 0, 0, 0
@@ -142,6 +142,18 @@ end # function get_test_counts
     # if
 end # if VERSION >= v"1.11.0-DEV.1529"
 
+# anynonpass
+if VERSION >= v"1.13.0-DEV.1037" # julia commit 364ecb3a11
+    using .Test: anynonpass
+else
+    anynonpass(tc::TestCounts) = (tc.fails + tc.errors + tc.cumulative_fails + tc.cumulative_errors > 0)
+    function anynonpass(ts::DefaultTestSet)
+        tc = get_test_counts(ts)
+        anynonpass(tc)
+    end
+end # if VERSION >= v"1.13.0-DEV.1037"
+
+# insert_toplevel_latestworld
 if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c5
     using .Test: insert_toplevel_latestworld
 else

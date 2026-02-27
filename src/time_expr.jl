@@ -21,7 +21,7 @@ function remove_linenums_macrocall!(@nospecialize ex)
         for subex in ex.args
             subex isa Expr && remove_linenums_macrocall!(subex)
         end
-    elseif ex isa CodeInfo
+    elseif ex isa Core.CodeInfo
         ex.debuginfo = Core.DebugInfo(ex.debuginfo.def) # TODO: filter partially, but keep edges
     end
     return ex

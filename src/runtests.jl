@@ -195,10 +195,6 @@ function include_test_file(into::Union{Nothing, Module}, filepath::String)
     end
 end
 
-function got_anynonpass(tc)::Bool
-    any(!iszero, (tc.fails, tc.errors))
-end
-
 function normal_run(dir::String, tests::Vector{String}, start_idx::Int, into::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     io = IOContext(Core.stdout, :color => have_color())
     total = Total()
@@ -216,7 +212,7 @@ function normal_run(dir::String, tests::Vector{String}, start_idx::Int, into::Un
         (compiled::CompileTiming, tc::TestCounts) = jive_lets_dance(io, verbose, ts, into, filepath)
         verbose && jive_print_counts(io, tc, compiled)
         accumulate!(total, tc, compiled)
-        failfast && got_anynonpass(tc) && break
+        failfast && anynonpass(tc) && break
     end
     verbose && jive_report(io, total)
     return total
