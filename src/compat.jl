@@ -163,9 +163,9 @@ end
 if VERSION >= v"1.12.0-DEV.1812" # julia commit 6136893eee
     using .Test: get_rng, set_rng!
 else
-    using .Test: AbstractTestSet, AbstractRNG
+    using .Test: AbstractTestSet
     get_rng(ts::T) where {T <: AbstractTestSet} = hasfield(T, :rng) ? ts.rng : nothing
-    set_rng!(ts::T, rng::AbstractRNG) where {T <: AbstractTestSet} = hasfield(T, :rng) ? (ts.rng = rng) : rng
+    set_rng!(ts::T, rng::Test.AbstractRNG) where {T <: AbstractTestSet} = hasfield(T, :rng) ? (ts.rng = rng) : rng
 end
 
 if VERSION >= v"1.13.0-DEV.731"
@@ -386,18 +386,45 @@ function print_testset_summary(action::Symbol, ts::AbstractTestSet)
     end
 end # function print_testset_summary
 
-### compat
-function compat_get_bool_env(name::String, default::Bool)::Bool
-    if VERSION >= v"1.11.0-DEV.1432"
-        Base.get_bool_env(name, default)
-    else
-        if haskey(ENV, name)
-            parse(Bool, getindex(ENV, name))
+### compat_get_bool_env
+if VERSION >= v"1.11.0-DEV.1432"
+    const compat_get_bool_env = Base.get_bool_env
+else
+    # from julia/base/env.jl
+    const get_bool_env_truthy = (
+        "t", "T",
+        "true", "True", "TRUE",
+        "y", "Y",
+        "yes", "Yes", "YES",
+        "1")
+    const get_bool_env_falsy = (
+        "f", "F",
+        "false", "False", "FALSE",
+        "n", "N",
+        "no", "No", "NO",
+        "0")
+    function parse_bool_env(name::String, val::String = ENV[name]; throw::Bool=false)::Union{Nothing, Bool}
+        if val in get_bool_env_truthy
+            return true
+        elseif val in get_bool_env_falsy
+            return false
+        elseif throw
+            Base.throw(ArgumentError("Value for environment variable `$name` could not be parsed as Boolean: $(repr(val))"))
         else
-            default
+            return nothing
         end
     end
-end # function compat_get_bool_env
+    function compat_get_bool_env(name::String, default::Bool; kwargs...)::Union{Nothing, Bool}
+        if haskey(ENV, name)
+            val = ENV[name]
+            if !isempty(val)
+                return parse_bool_env(name, val; kwargs...)
+            end
+        end
+        return default
+    end
+end # if VERSION >= v"1.11.0-DEV.1432"
+
 
 if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" # _testset_forloop, _testset_beginend_call
 
