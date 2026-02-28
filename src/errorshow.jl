@@ -79,7 +79,7 @@ end # function show_processed_backtrace
     # if VERSION >= v"1.13.0-DEV.927"
 
 elseif VERSION >= v"1.11"
-using Base: InterpreterIP, BIG_STACKTRACE_SIZE, process_backtrace,
+using Base: InterpreterIP, process_backtrace,
             show_full_backtrace, stacktrace_linebreaks, update_stackframes_callback
 using Base.StackTraces: StackFrame
 import Base: show_backtrace
@@ -112,8 +112,8 @@ function _show_backtrace(io::IO, t::Vector; prefix=nothing)
         end
     end
 
-    if length(filtered) > BIG_STACKTRACE_SIZE
-        Base.show_reduced_backtrace(IOContext(io, :backtrace => true), filtered; prefix)
+    if length(filtered) > Base.BIG_STACKTRACE_SIZE
+        Base.show_reduced_backtrace(IOContext(io, :backtrace => true), filtered #=; prefix =#)
         return
     else
         try invokelatest(update_stackframes_callback[], filtered) catch end

@@ -207,7 +207,7 @@ module compat_ScopedValues
 
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
     using ..Test: CURRENT_TESTSET, TESTSET_DEPTH
-    using Base.ScopedValues: LazyScopedValue, with, get
+    using Base.ScopedValues: LazyScopedValue, get
 else
     using ..Test: FallbackTestSet, AbstractTestSet
     using ..Jive: compat_push_testset, compat_pop_testset

@@ -246,7 +246,7 @@ function jive_testset_description(numbering)::String
 end
 
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
-using .compat_ScopedValues: with, CURRENT_TESTSET, TESTSET_DEPTH
+using .compat_ScopedValues: CURRENT_TESTSET, TESTSET_DEPTH
 end # if
 function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::Tuple{CompileTiming,TestCounts}
     elapsed_time_start = time_ns()
@@ -257,7 +257,7 @@ function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{
     elapsed_time_start   = elapsed_time_start
     if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
         @noinline do_include_test_file() = include_test_file(into, filepath)
-        with(do_include_test_file, CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1)
+        Base.ScopedValues.with(do_include_test_file, CURRENT_TESTSET => ts, TESTSET_DEPTH => get_testset_depth() + 1)
         tc = get_test_counts(ts)
     else
         compat_push_testset(ts)
