@@ -94,7 +94,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
                             (tc, compiled, buf) = fetch(f)
                             accumulate!(total, tc, compiled)
                             verbose && print(io, String(take!(buf)))
-                            if failfast && got_anynonpass(tc)
+                            if failfast && anynonpass(tc)
                                 state.stop = true
                                 break
                             end
@@ -115,7 +115,7 @@ function distributed_run(dir::String, tests::Vector{String}, start_idx::Int, nod
             (tc, compiled, buf) = fetch(f)
             accumulate!(total, tc, compiled)
             verbose && print(io, String(take!(buf)))
-            failfast && got_anynonpass(tc) && break
+            failfast && anynonpass(tc) && break
         end
     catch err
         print(io, "⚠️  ")
