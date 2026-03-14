@@ -46,6 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
+    - name: add PATH
+      shell: bash
+      run: |
+        echo "$HOME/.julia/bin" >> "$GITHUB_PATH"
     - uses: aviatesk/JETLS.jl/.github/actions/check@release
       with:
         files: src/Jive.jl test/runtests.jl
