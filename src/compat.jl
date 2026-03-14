@@ -324,21 +324,13 @@ function _testset_context(args, ex, source)
     else
         error("Malformed `let` expression is given")
     end
-    reverse!(contexts)
-
     test_ex = ex.args[2]
-
-    ex.args[2] = quote
-        $(map(contexts) do context
-            :($compat_push_testset($(ContextTestSet)($(QuoteNode(context)), $context; $options...)))
-        end...)
-        try
-            $(test_ex)
-        finally
-            $(map(_->:($compat_pop_testset()), contexts)...)
+    for context in contexts
+        if VERSION >= v"1.10"
+            test_ex = :(@with_testset($ContextTestSet($(QuoteNode(context)), $context; $options...), $test_ex))
         end
     end
-
+    ex.args[2] = test_ex
     return esc(ex)
 end # function _testset_context
     # if
@@ -390,39 +382,52 @@ end # function print_testset_summary
 if VERSION >= v"1.11.0-DEV.1432"
     const compat_get_bool_env = Base.get_bool_env
 else
-    # from julia/base/env.jl
-    const get_bool_env_truthy = (
-        "t", "T",
-        "true", "True", "TRUE",
-        "y", "Y",
-        "yes", "Yes", "YES",
-        "1")
-    const get_bool_env_falsy = (
-        "f", "F",
-        "false", "False", "FALSE",
-        "n", "N",
-        "no", "No", "NO",
-        "0")
-    function parse_bool_env(name::String, val::String = ENV[name]; throw::Bool=false)::Union{Nothing, Bool}
-        if val in get_bool_env_truthy
-            return true
-        elseif val in get_bool_env_falsy
-            return false
-        elseif throw
-            Base.throw(ArgumentError("Value for environment variable `$name` could not be parsed as Boolean: $(repr(val))"))
-        else
-            return nothing
+# from julia/base/env.jl
+const get_bool_env_truthy = (
+    "t", "T",
+    "true", "True", "TRUE",
+    "y", "Y",
+    "yes", "Yes", "YES",
+    "1")
+const get_bool_env_falsy = (
+    "f", "F",
+    "false", "False", "FALSE",
+    "n", "N",
+    "no", "No", "NO",
+    "0")
+function parse_bool_env(name::String, val::String = ENV[name]; throw::Bool=false)::Union{Nothing, Bool}
+    if val in get_bool_env_truthy
+        return true
+    elseif val in get_bool_env_falsy
+        return false
+    elseif throw
+        Base.throw(ArgumentError("Value for environment variable `$name` could not be parsed as Boolean: $(repr(val))"))
+    else
+        return nothing
+    end
+end # function parse_bool_env
+
+if VERSION < v"1.7"
+    # from julia/base/operators.jl
+    struct Returns{V} <: Function
+        value::V
+    end
+    (obj::Returns)(@nospecialize(args...); @nospecialize(kw...)) = obj.value
+end # if
+function compat_get_bool_env(name::String, default::Bool; kwargs...)::Union{Nothing, Bool}
+    compat_get_bool_env(Returns(default), name; kwargs...)
+end # function compat_get_bool_env(::String, ::Bool)
+
+using Base: Callable
+function compat_get_bool_env(f_default::Callable, name::String; kwargs...)::Union{Nothing, Bool}
+    if haskey(ENV, name)
+        val = ENV[name]
+        if !isempty(val)
+            return parse_bool_env(name, val; kwargs...)
         end
     end
-    function compat_get_bool_env(name::String, default::Bool; kwargs...)::Union{Nothing, Bool}
-        if haskey(ENV, name)
-            val = ENV[name]
-            if !isempty(val)
-                return parse_bool_env(name, val; kwargs...)
-            end
-        end
-        return default
-    end
+    return f_default()
+end # function compat_get_bool_env(::Callable, :String)
 end # if VERSION >= v"1.11.0-DEV.1432"
 
 
@@ -469,59 +474,41 @@ function _testset_forloop(args, testloop, source)
     tests = testloop.args[2]
     blk = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
-        # Trick to handle `break` and `continue` in the test code before
-        # they can be handled properly by `finally` lowering.
-        if !first_iteration
-            compat_pop_testset()
-            finish_errored = true
-            push!(arr, finish(ts))
-            finish_errored = false
-            copy!(default_rng(), tls_seed)
-        end
         ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode))
             $(testsettype)($desc; source=$(QuoteNode(source.file)), $options..., rng=tls_seed)
         else
             $(testsettype)($desc; $options...)
         end
-        compat_push_testset(ts)
-        first_iteration = false
         try
-            $(esc(tests))
+            @with_testset ts begin
+                # default RNG is reset to its state from last `seed!()` to ease reproduce a failed test
+                copy!(Random.default_rng(), tls_seed)
+                $(esc(tests))
+            end
         catch err
             err isa InterruptException && rethrow()
             # Something in the test block threw an error. Count that as an
             # error in this test set
             trigger_test_failure_break(err)
             if is_failfast_error(err)
-                get_testset_depth() > 1 ? rethrow() : failfast_print()
+                get_testset_depth() > 0 ? rethrow() : failfast_print()
             else
                 record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source)), nothing))
             end
+        finally
+            copy!(default_rng(), default_rng_orig)
+            copy!(Random.get_tls_seed(), tls_seed_orig)
+            push!(arr, finish(ts))
         end
     end
     quote
         local arr = Vector{Any}()
-        local first_iteration = true
-        local ts
         local rng_option = get($(options), :rng, nothing)
-        local finish_errored = false
         local default_rng_orig = copy(default_rng())
         local tls_seed_orig = copy(Random.get_tls_seed())
         local tls_seed = isnothing(rng_option) ? copy(Random.get_tls_seed()) : rng_option
-        copy!(Random.default_rng(), tls_seed)
-        try
-            let
-                $(Expr(:for, Expr(:block, [esc(v) for v in loopvars]...), blk))
-            end
-        finally
-            # Handle `return` in test body
-            if !first_iteration && !finish_errored
-                compat_pop_testset()
-                @assert @isdefined(ts) "Assertion to tell the compiler about the definedness of this variable"
-                push!(arr, finish(ts))
-            end
-            copy!(default_rng(), default_rng_orig)
-            copy!(Random.get_tls_seed(), tls_seed_orig)
+        let
+            $(Expr(:for, Expr(:block, [esc(v) for v in loopvars]...), blk))
         end
         arr
     end
@@ -558,13 +545,14 @@ function _testset_beginend_call(args, tests, source)
         else
             $(testsettype)($desc; $options...)
         end
-        compat_push_testset(ts)
+
         # we reproduce the logic of guardseed, but this function
         # cannot be used as it changes slightly the semantic of @testset,
         # by wrapping the body in a function
         local default_rng_orig = copy(default_rng())
         local tls_seed_orig = copy(Random.get_tls_seed())
-        local tls_seed = isnothing(get_rng(ts)) ? set_rng!(ts, tls_seed_orig) : get_rng(ts)
+        local ts_rng = get_rng(ts)
+        local tls_seed = isnothing(ts_rng) ? set_rng!(ts, tls_seed_orig) : ts_rng
         try
             @with_testset ts begin
                 # default RNG is reset to its state from last `seed!()` to ease reproduce a failed test
@@ -580,14 +568,13 @@ function _testset_beginend_call(args, tests, source)
             # error in this test set
             trigger_test_failure_break(err)
             if is_failfast_error(err)
-                get_testset_depth() > 1 ? rethrow() : failfast_print()
+                get_testset_depth() > 0 ? rethrow() : failfast_print()
             else
-                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source))))
+                record(ts, Error(:nontest_error, Expr(:tuple), err, Base.current_exceptions(), $(QuoteNode(source)), nothing))
             end
         finally
             copy!(default_rng(), default_rng_orig)
             copy!(Random.get_tls_seed(), tls_seed_orig)
-            compat_pop_testset()
             ret = finish(ts)
         end
         ret

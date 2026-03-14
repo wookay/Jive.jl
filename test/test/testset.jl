@@ -152,12 +152,14 @@ end # module test_testset_ContextTestSet
 
 using Test, Random
 
-rng = VERSION >= v"1.7.0-DEV.1224" ? Random.Xoshiro(0x2e026445595ed28e, 0x07bb81ac4c54926d, 0x83d7d70843e8bad6, 0xdbef927d150af80b, 0xdbf91ddf2534f850) : Random.MersenneTwister()
+random_func = VERSION >= v"1.7.0-DEV.1224" ? Random.Xoshiro : Random.MersenneTwister
+seed = 1234
+rng = random_func(seed)
 
 # @testset rng  v1.12.0-DEV.1812  julia commit 6136893eeed0c3559263a5aa465b630d2c7dc821
 @testset rng=rng begin
     f = VERSION >= v"1.12.0-DEV.1812" ? (==) : (!=)
-    @test f(rand(), 0.559472630416976)
+    @test f(rand(), 0.32597672886359486)
 end
 
 end # module test_testset_rng
