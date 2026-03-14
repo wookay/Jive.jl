@@ -55,4 +55,11 @@ checks_has_diff(
     "ext/TestExt.jl",
     :(module TestExt if VERSION >= v"1.14.0-DEV.1453" elseif VERSION >= v"1.11" function Base.show(io::Base.TTY, t::Fail) end end end)
 )
+
+checks_has_diff(
+    "sources/base/errorshow.jl",
+    :(function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing) end),
+    "src/errorshow.jl",
+    :(if VERSION >= v"1.13.0-DEV.927" function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing) end end)
+)
 end # if
