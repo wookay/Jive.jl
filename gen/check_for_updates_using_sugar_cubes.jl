@@ -89,7 +89,7 @@ check_the_code_block_diff(
     "sources/base/env.jl",
     :(function get_bool_env(f_default::Callable, name::String; kwargs...) end),
     "src/compat.jl",
-    :(if VERSION >= v"1.11.0-DEV.1432" else function compat_get_bool_env(f_default::Callable, name::String; kwargs...)::Union{Nothing, Bool} end end)
+    :(if VERSION >= v"1.11.0-DEV.1432" else function compat_get_bool_env(f_default::Base.Callable, name::String; kwargs...)::Union{Nothing, Bool} end end)
 )
 
 check_the_code_block_diff(

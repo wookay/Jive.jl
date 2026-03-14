@@ -418,8 +418,7 @@ function compat_get_bool_env(name::String, default::Bool; kwargs...)::Union{Noth
     compat_get_bool_env(Returns(default), name; kwargs...)
 end # function compat_get_bool_env(::String, ::Bool)
 
-using Base: Callable
-function compat_get_bool_env(f_default::Callable, name::String; kwargs...)::Union{Nothing, Bool}
+function compat_get_bool_env(f_default::Base.Callable, name::String; kwargs...)::Union{Nothing, Bool}
     if haskey(ENV, name)
         val = ENV[name]
         if !isempty(val)
@@ -427,7 +426,7 @@ function compat_get_bool_env(f_default::Callable, name::String; kwargs...)::Unio
         end
     end
     return f_default()
-end # function compat_get_bool_env(::Callable, :String)
+end # function compat_get_bool_env(::Base.Callable, :String)
 end # if VERSION >= v"1.11.0-DEV.1432"
 
 

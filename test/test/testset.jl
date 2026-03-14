@@ -163,3 +163,14 @@ rng = random_func(seed)
 end
 
 end # module test_testset_rng
+
+
+module test_testset_forloop
+
+using Test
+
+@testset for i in 1:3
+    @test i in 1:3
+end
+
+end # module test_testset_forloop
