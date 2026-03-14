@@ -1,3 +1,4 @@
+sources
 Manifest.toml
 .DS_Store
 *.jl.cov
