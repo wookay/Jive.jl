@@ -60,7 +60,7 @@ check_the_code_block_diff(
     "sources/stdlib/Test/src/Test.jl",
     :(module Test function testset_context(args, ex, source) end end),
     "src/compat.jl",
-    :(if VERSION >= v"1.9.0-DEV.1055" else function _testset_context(args, ex, source) end end),
+    :(if VERSION >= v"1.9.0-DEV.1055" else function _testset_context(args, ex, source) end end) ;
     skip_lines = (src = [-4], dest = collect(-6:-4))
 )
 
@@ -68,7 +68,8 @@ check_the_code_block_diff(
     "sources/stdlib/Test/src/Test.jl",
     :(module Test function testset_forloop(args, testloop, source) end end),
     "src/compat.jl",
-    :(if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" function _testset_forloop(args, testloop, source) end end)
+    :(if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" function _testset_forloop(args, testloop, source) end end) ;
+    skip_lines = (src = [34], dest = [34])
 )
 
 check_the_code_block_diff(
