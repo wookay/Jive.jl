@@ -10,7 +10,7 @@ function checks_has_diff(src_path::String,
                          src_signature::Expr,
                          dest_path::String,
                          dest_signature::Expr ;
-                         skip_lines)
+                         skip_lines = (src = Int[], dest = Int[]))
     printstyled(stdout, "checks_has_diff", color = :cyan)
     print(stdout, " ", basename(src_path), " ")
     src_filepath = normpath(@__DIR__, "..", src_path)
@@ -40,5 +40,19 @@ checks_has_diff(
     "ext/TestExt.jl",
     :(module TestExt if VERSION >= v"1.14.0-DEV.1453" elseif VERSION >= v"1.11" function do_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=nothing) end end end) ;
     skip_lines = (src = [-4], dest = collect(-8:-4))
+)
+
+checks_has_diff(
+    "sources/stdlib/Test/src/Test.jl",
+    :(module Test function do_broken_test(result::ExecutionResult, @nospecialize(orig_expr), context=nothing) end end),
+    "ext/TestExt.jl",
+    :(module TestExt if VERSION >= v"1.14.0-DEV.1453" elseif VERSION >= v"1.11" function do_broken_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=nothing) end end end)
+)
+
+checks_has_diff(
+    "sources/stdlib/Test/src/Test.jl",
+    :(module Test function Base.show(io::IO, t::Fail) end end),
+    "ext/TestExt.jl",
+    :(module TestExt if VERSION >= v"1.14.0-DEV.1453" elseif VERSION >= v"1.11" function Base.show(io::Base.TTY, t::Fail) end end end)
 )
 end # if

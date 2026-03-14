@@ -132,6 +132,14 @@ function Base.show(io::Base.TTY, t::Fail)
         # An exception was expected, but no exception was thrown
         print(io, "\n    Expected: ", data)
         print(io, "\n  No exception thrown")
+    elseif t.test_type === :test_warn
+        # @test_warn failed: expected pattern not found in output
+        print(io, "\n  Expected stderr: ", data)
+        print(io, "\n  Captured stderr: ", value)
+    elseif t.test_type === :test_nowarn
+        # @test_nowarn failed: unexpected output was produced
+        print(io, "\n  Expected stderr: ", data)
+        print(io, "\n  Captured stderr: ", value)
     elseif t.test_type === :test
         if data !== nothing && t.orig_expr != data
             # The test was an expression, so display the term-by-term
