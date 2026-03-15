@@ -27,32 +27,25 @@ for the `runtests.jl`, `ARGS` are used to filter the targets and to set the star
     Pass 4  (0.01 seconds)
 ✅  All 8 tests have been completed.  (0.62 seconds)
 ```
-
 in the above example, test files are matched for only have `jive/s` and jumping up to the 3rd file.
 
-### Examples
+set `JULIA_TEST_VERBOSE=true` to print the detailed hierarchical test summaries.
+```
+~/.julia/dev/Jive/test $ JULIA_TEST_VERBOSE=true julia test/testset.jl
+Starting testset: basic
+Finished testset: basic (0.0s)
+Test Summary: | Pass  Total  Time
+basic         |    1      1  0.0s
 
-* run tests
-```sh
-~/.julia/dev/Jive/test $ julia runtests.jl
+~/.julia/dev/Jive/test $ JULIA_TEST_VERBOSE=true julia runtests.jl test/testset.jl
+1/1 test/testset.jl
+Test Summary: | Pass  Total  Time
+basic         |    1      1  0.1s
+    Pass: 1  (compile: 0.28, recompile: 0.09, elapsed: 0.28 seconds)
+✅  All 1 test has been completed.  (compile: 0.28, recompile: 0.09, elapsed: 0.28 seconds)
 ```
 
-* run tests with target directory.
-```sh
-~/.julia/dev/Jive/test $ julia runtests.jl jive/If
-```
-
-* distributed run tests with `-p`
-```sh
-~/.julia/dev/Jive/test $ julia -p3 runtests.jl
-```
-
-* distributed run tests for `Pkg.test()`, using `JIVE_PROCS` ENV.
-```sh
-~/.julia/dev/Jive $ JIVE_PROCS=2 julia --project=. -e 'using Pkg; Pkg.test()'
-
-~/.julia/dev/Jive $ julia --project=. -e 'ENV["JIVE_PROCS"]="2"; using Pkg; Pkg.test()'
-```
+Refer to the [docs/runtests](https://wookay.github.io/docs/Jive.jl/runtests/) for details.
 
 [TestJive.jl](https://github.com/wookay/TestJive.jl) is an example package for using Jive.
 look at also the `test/Project.toml` file for your own package.
