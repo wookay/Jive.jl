@@ -39,7 +39,7 @@ check_the_code_block_diff(
     :(module Test function do_test(result::ExecutionResult, @nospecialize(orig_expr), context=nothing) end end),
     "ext/TestExt.jl",
     :(module TestExt if VERSION >= v"1.14.0-DEV.1453" elseif VERSION >= v"1.11" function do_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=nothing) end end end) ;
-    skip_lines = (src = [-4], dest = collect(-8:-4))
+    skip_lines = (src = [-4], dest = vcat(-8:-4))
 )
 
 check_the_code_block_diff(
@@ -61,7 +61,7 @@ check_the_code_block_diff(
     :(module Test function testset_context(args, ex, source) end end),
     "src/compat.jl",
     :(if VERSION >= v"1.9.0-DEV.1055" else function _testset_context(args, ex, source) end end) ;
-    skip_lines = (src = [-4], dest = collect(-6:-4))
+    skip_lines = (src = [-4], dest = vcat(-6:-4))
 )
 
 check_the_code_block_diff(
@@ -69,7 +69,7 @@ check_the_code_block_diff(
     :(module Test function testset_forloop(args, testloop, source) end end),
     "src/compat.jl",
     :(if v"1.13.0-DEV.731" > VERSION >= v"1.11.0-DEV.336" function _testset_forloop(args, testloop, source) end end) ;
-    skip_lines = (src = [34], dest = [34])
+    skip_lines = (src = [37], dest = [37])
 )
 
 check_the_code_block_diff(
