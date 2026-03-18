@@ -608,7 +608,13 @@ end # function default_testset_ignored_keys
 
 function compat_default_testset(exprs...)
     ignore_keys = default_testset_ignored_keys()
-    filter(expr -> !(expr.head === :(=) && expr.args[1] in ignore_keys), exprs)
+    filter(exprs) do expr
+        if expr isa Expr && expr.head === :(=)
+            !(expr.args[1] in ignore_keys)
+        else
+            true
+        end
+    end
 end
 
 import .Test: @testset
