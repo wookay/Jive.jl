@@ -35,9 +35,13 @@ import Base: show_processed_backtrace
 # from julia/base/errorshow.jl
 # function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
 function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
-    println(io)
-    prefix === nothing || print(io, prefix)
-    println(io, "Stacktrace:")
+    if any(showable_stackframe(frame) for (frame, n) in trace)
+        println(io)
+        prefix === nothing || print(io, prefix)
+        println(io, "Stacktrace:")
+    else
+        return
+    end
 
     ndigits_max = ndigits(num_frames)
 

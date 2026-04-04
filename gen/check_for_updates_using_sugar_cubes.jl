@@ -97,6 +97,7 @@ check_the_code_block_diff(
     "sources/base/errorshow.jl",
     :(function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing) end),
     "src/errorshow.jl",
-    :(if VERSION >= v"1.13.0-DEV.927" function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing) end end)
+    :(if VERSION >= v"1.13.0-DEV.927" function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing) end end) ;
+    skip_lines = (src = vcat(1:3), dest = vcat(1:7))
 )
 end # if
