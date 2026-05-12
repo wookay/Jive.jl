@@ -124,7 +124,6 @@ end # function get_override_targets
 
 """
     runtests(dir::String ;
-             failfast::Bool = false,
              targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
              skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
              filter_testset::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
@@ -136,7 +135,6 @@ end # function get_override_targets
 run the test files from the specific directory.
 
 * `dir`: the root directory to traverse.
-* `failfast`: aborting on the first failure. be overridden when the `ENV` variable `JULIA_TEST_FAILFAST` has set.
 * `targets`: filter targets and start. ` `(space) separated `String` or a `Vector{String}`. be overridden when `ARGS` are not empty.
 * `skip`: files or directories to skip. be overridden when the `ENV` variable `JIVE_SKIP` has set. `,`(comma) separated.
 * `testset_filter`: filter testset. default is `nothing`.
@@ -146,7 +144,6 @@ run the test files from the specific directory.
 * `verbose`: print details of test execution
 """
 function runtests(dir::String ;
-                  failfast::Bool = false,
                   targets::Union{AbstractString, Vector{<: AbstractString}} = String[],
                   skip::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
                   testset_filter::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
