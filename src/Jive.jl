@@ -31,8 +31,8 @@ include("watch.jl")
 # Jive.delete
 include("delete.jl")
 
-export sprint_plain, sprint_colored, sprint_html
-export @sprint_plain, @sprint_colored
+export sprint_colored, sprint_html, sprint_plain
+export @sprint_colored, @sprint_plain
 include("sprints.jl")
 
 include("precompile.jl")

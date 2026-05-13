@@ -1,7 +1,7 @@
 # module Jive
 
 # code from https://github.com/JuliaLang/julia/blob/master/test/runtests.jl
-using Distributed: @everywhere, RemoteException, remotecall, remotecall_fetch, myid, nprocs, addprocs, nworkers, rmprocs, workers
+using Distributed: @everywhere, RemoteException, addprocs, myid, nprocs, nworkers, remotecall, rmprocs, workers
 
 function runner(worker::Int, idx::Int, num_tests::Int, subpath::String, into::Union{Nothing,Module}, filepath::String, verbose::Bool, color::Bool)
     numbering = string(idx, /, num_tests)
@@ -20,7 +20,7 @@ mutable struct RunningState
     stop::Bool
 end
 
-function runtests_distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{<:AbstractString}, into::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
+function runtests_distributed_run(dir::String, tests::Vector{String}, start_idx::Int, node1::Vector{<: AbstractString}, into::Union{Nothing,Module}, verbose::Bool, failfast::Bool)::Total
     env_jive_procs = get(ENV, "JIVE_PROCS", "") # "" "auto" "0" "1" "2" "3" ...
     if ("0" == env_jive_procs)
         total = normal_run(dir, tests, start_idx, into, verbose, failfast)

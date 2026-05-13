@@ -31,11 +31,10 @@ end # if VERSION >= v"1.11"
 
 
 if VERSION >= v"1.13.0-DEV.927" # julia commit 21d15ede0729a810458e2045f224e2e8a7db92e8
-import Base: show_processed_backtrace
 # from julia/base/errorshow.jl
 # function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
-function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
-    if any(showable_stackframe(frame) for (frame, n) in trace)
+function Base.show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
+    if any(showable_stackframe(frame) for (frame, _n) in trace)
         println(io)
         prefix === nothing || print(io, prefix)
         println(io, "Stacktrace:")
@@ -71,7 +70,7 @@ function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int,
 
         Base.print_stackframe(io, frame_counter, frame, ndigits_max, max_nested_cycles, nactive_cycles, ncycle_starts, Base.STACKTRACE_FIXEDCOLORS, Base.STACKTRACE_MODULECOLORS; prefix)
 
-        frame_counter, nactive_cycles = Base._backtrace_print_repetition_closings!(io, i, current_cycles, frame_counter, max_nested_cycles, nactive_cycles, ndigits_max; prefix)
+        frame_counter, _nactive_cycles = Base._backtrace_print_repetition_closings!(io, i, current_cycles, frame_counter, max_nested_cycles, nactive_cycles, ndigits_max; prefix)
         frame_counter += 1
 
         if i < length(trace)
@@ -79,23 +78,24 @@ function show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int,
             print_linebreaks && println(io)
         end
     end
-end # function show_processed_backtrace
+end # function Base.show_processed_backtrace
     # if VERSION >= v"1.13.0-DEV.927"
 
 elseif VERSION >= v"1.11"
 using Base: InterpreterIP, process_backtrace,
             show_full_backtrace, stacktrace_linebreaks, update_stackframes_callback
 using Base.StackTraces: StackFrame
-import Base: show_backtrace
 # from julia/base/errorshow.jl
 # function show_backtrace(io::IO, t::Vector; prefix=nothing)
-function show_backtrace(io::IO, t::Vector{StackFrame}; prefix=nothing)
+function Base.show_backtrace(io::IO, t::Vector{StackFrame}; prefix=nothing)
     _show_backtrace(io, t; prefix)
 end
-function show_backtrace(io::IO, t::Vector{Union{Ptr{Nothing}, InterpreterIP}}; prefix=nothing)
+function Base.show_backtrace(io::IO, t::Vector{Union{Ptr{Nothing}, InterpreterIP}}; prefix=nothing)
     _show_backtrace(io, t; prefix)
 end
 function _show_backtrace(io::IO, t::Vector; prefix=nothing)
+    prefix # JETLS: Unused argument
+
     if haskey(io, :last_shown_line_infos)
         empty!(io[:last_shown_line_infos])
     end
@@ -125,7 +125,7 @@ function _show_backtrace(io::IO, t::Vector; prefix=nothing)
         show_full_backtrace(io, filtered; print_linebreaks = stacktrace_linebreaks() #=, prefix =#)
     end
     nothing
-end # function show_backtrace
+end # function _show_backtrace
     # elseif VERSION >= v"1.11"
 
 end # if

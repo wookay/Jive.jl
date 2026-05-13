@@ -1,15 +1,22 @@
 # module Jive
 
-using .Test: AbstractTestSet, DefaultTestSet,
-             get_testset, get_testset_depth, _check_testset,
-             record, finish, print_test_results,
+using .Test: AbstractTestSet,
+             Broken,
+             DefaultTestSet,
+             Error,
+             Random,
+             _check_testset,
+             default_rng,
+             finish,
+             get_testset,
+             get_testset_depth,
              parse_testset_args, # 0.7.0-DEV.1995
-             Pass, Error, Broken,
-             Random, default_rng
+             print_test_results,
+             record
 
 # override this function if you want to
 # Jive.jive_print_testset_verbose(action::Symbol, ts::Test.AbstractTestSet)
-function jive_print_testset_verbose(action::Symbol, ts)
+function jive_print_testset_verbose(_action::Symbol, _ts)
 end
 
 
@@ -80,7 +87,7 @@ if VERSION >= v"1.9.0-DEV.1055" # julia commit ff1b563e3c
     using .Test: Fail
 else
     import .Test: Fail
-    function Fail(test_type::Symbol, orig_expr, data, value, context, source::LineNumberNode, message_only::Bool, backtrace=nothing)
+    function Fail(test_type::Symbol, orig_expr, data, value, _context, source::LineNumberNode, _message_only::Bool, _backtrace=nothing)
         Fail(test_type, orig_expr, data, value, source)
     end
 end
@@ -89,7 +96,7 @@ if VERSION >= v"1.10.0-DEV.1171" # julia commit 5304baa45a
 using .Test: scrub_backtrace
 else
 import .Test: scrub_backtrace
-function scrub_backtrace(bt, file_ts, file_t)
+function scrub_backtrace(bt, _file_ts, _file_t)
     scrub_backtrace(bt)
 end
 end # if VERSION >= v"1.10.0-DEV.1171"
@@ -171,9 +178,9 @@ end
 if VERSION >= v"1.13.0-DEV.731"
     using .Test: is_failfast_error
 else
-    is_failfast_error(err::FailFastError) = true
+    is_failfast_error(_err::FailFastError) = true
     is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
-    is_failfast_error(err) = false
+    is_failfast_error(_err) = false
 end
 
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
@@ -187,7 +194,7 @@ else
     else
         const global_fail_fast = () -> compat_get_bool_env("JULIA_TEST_FAILFAST", false)
     end
-    using .Test: push_testset, pop_testset
+    using .Test: pop_testset, push_testset
     compat_push_testset = push_testset
     compat_pop_testset = pop_testset
     macro with_testset(ts, expr)
@@ -208,9 +215,10 @@ module compat_ScopedValues
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
     using ..Test: CURRENT_TESTSET, TESTSET_DEPTH
     using Base.ScopedValues: LazyScopedValue, get
+
+    CURRENT_TESTSET, TESTSET_DEPTH, get # JETLS: Unused import
 else
-    using ..Test: FallbackTestSet, AbstractTestSet
-    using ..Jive: compat_push_testset, compat_pop_testset
+    using ..Test: AbstractTestSet, FallbackTestSet
     abstract type AbstractScopedValue{T} end
     mutable struct LazyScopedValue{T} <: AbstractScopedValue{T}
         getdefault # ::OncePerProcess{T}
@@ -235,7 +243,7 @@ if VERSION >= v"1.13.0-DEV.1075" # julia commit 0b39226110
     using .Test: VERBOSE_TESTSETS
     import .Test: print_testset_verbose
 else
-    using .compat_ScopedValues: CURRENT_TESTSET, TESTSET_DEPTH, LazyScopedValue
+    using .compat_ScopedValues: CURRENT_TESTSET, LazyScopedValue, TESTSET_DEPTH
     const VERBOSE_TESTSETS = LazyScopedValue{Bool}() do # OncePerProcess{Bool}
         return compat_get_bool_env("JULIA_TEST_VERBOSE", false)
     end
@@ -300,7 +308,7 @@ end # function record
     # if
 
 # Generate the code for an `@testset` with a `let` argument.
-function _testset_context(args, ex, source)
+function _testset_context(args, ex, _source)
     desc, testsettype, options = parse_testset_args(args[1:end-1])
     if desc !== nothing || testsettype !== nothing
         # Reserve this syntax if we ever want to allow this, but for now,
@@ -343,14 +351,14 @@ function print_testset_summary(action::Symbol, ts::AbstractTestSet)
     env_verbose = something(compat_ScopedValues.get(VERBOSE_TESTSETS))
     !env_verbose && return
     depth_pad = get_testset_depth()
-    indent = "  " ^ depth_pad
-    desc = if hasfield(typeof(ts), :description)
-        ts.description
-    elseif isa(ts, ContextTestSet)
-        string(ts.context_name, " = ", ts.context)
-    else
-        string(typeof(ts))
-    end
+    # indent = "  " ^ depth_pad
+    # desc = if hasfield(typeof(ts), :description)
+    #     ts.description
+    # elseif isa(ts, ContextTestSet)
+    #     string(ts.context_name, " = ", ts.context)
+    # else
+    #     string(typeof(ts))
+    # end
     if action === :enter
         # println("$(indent)Starting testset: $desc")
     elseif action === :exit
@@ -359,21 +367,21 @@ function print_testset_summary(action::Symbol, ts::AbstractTestSet)
                 print_test_results(rs, depth_pad)
             end
         end
-        duration_str = ""
+        # duration_str = ""
         # Calculate duration for testsets that have timing information
-        if hasfield(typeof(ts), :time_start) && hasfield(typeof(ts), :showtiming)
-            if ts.showtiming
-                current_time = time()
-                dur_s = current_time - ts.time_start
-                if dur_s < 60
-                    duration_str = " ($(round(dur_s, digits = 1))s)"
-                else
-                    m, s = divrem(dur_s, 60)
-                    s = lpad(string(round(s, digits = 1)), 4, "0")
-                    duration_str = " ($(round(Int, m))m$(s)s)"
-                end
-            end
-        end
+        # if hasfield(typeof(ts), :time_start) && hasfield(typeof(ts), :showtiming)
+        #     if ts.showtiming
+        #         current_time = time()
+        #         dur_s = current_time - ts.time_start
+        #         if dur_s < 60
+        #             duration_str = " ($(round(dur_s, digits = 1))s)"
+        #         else
+        #             m, s = divrem(dur_s, 60)
+        #             s = lpad(string(round(s, digits = 1)), 4, "0")
+        #             duration_str = " ($(round(Int, m))m$(s)s)"
+        #         end
+        #     end
+        # end
         # println("$(indent)Finished testset: $desc$duration_str")
     end
 end # function print_testset_summary
@@ -412,7 +420,7 @@ if VERSION < v"1.7"
     struct Returns{V} <: Function
         value::V
     end
-    (obj::Returns)(@nospecialize(args...); @nospecialize(kw...)) = obj.value
+    (obj::Returns)(@nospecialize(args...); @nospecialize(_kw...)) = obj.value
 end # if
 function compat_get_bool_env(name::String, default::Bool; kwargs...)::Union{Nothing, Bool}
     compat_get_bool_env(Returns(default), name; kwargs...)

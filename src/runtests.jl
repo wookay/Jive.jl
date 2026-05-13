@@ -35,7 +35,8 @@ include("errorshow.jl")
 struct FinishedWithErrorsException <: Exception
 end
 
-function Base.showerror(io::IO, ex::FinishedWithErrorsException, bt; backtrace=true)
+function Base.showerror(io::IO, ::FinishedWithErrorsException, _bt; backtrace=true)
+    backtrace # JETLS: Unused argument
     printstyled(io, "Test run finished with errors.", color=:red, bold=true)
 end
 
@@ -75,7 +76,7 @@ function get_all_files(dir::String, skip::Vector{String}, targets::Vector{String
 
     all_files = Vector{String}()
     function traverse_target(dir::String, filterpath::Union{Nothing, String})
-        for (root, dirs, files) in walkdir(dir)
+        for (root, _dirs, files) in walkdir(dir)
             for filename in files
                 !endswith(filename, ".jl") && continue
                 root == dir && "runtests.jl" == filename && continue
@@ -149,7 +150,7 @@ function runtests(dir::String ;
                   testset_filter::Union{Nothing, AbstractString, Vector{<: AbstractString}, Regex, Base.Callable} = nothing,
                   into::Union{Nothing, Module} = nothing,
                   enable_distributed::Bool = true,
-                  node1::Union{Vector{Any}, Vector{<: AbstractString}} = String[],
+                  node1::Vector{<: AbstractString} = String[],
                   verbose::Bool = true)::Total
 
     # override_failfast
@@ -245,7 +246,7 @@ end
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
 using .compat_ScopedValues: CURRENT_TESTSET, TESTSET_DEPTH
 end # if
-function jive_lets_dance(io::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::Tuple{CompileTiming,TestCounts}
+function jive_lets_dance(::IO, verbose::Bool, ts::DefaultTestSet, into::Union{Nothing, Module}, filepath::String)::Tuple{CompileTiming,TestCounts}
     elapsed_time_start = time_ns()
     cumulative_compile_timing(true)
     (compile_time, recompile_time) = cumulative_compile_time_ns()
