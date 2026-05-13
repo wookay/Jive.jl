@@ -50,13 +50,13 @@ if VERSION >= v"1.9.0-DEV.228"
     using .Test: trigger_test_failure_break
 else
     trigger_test_failure_break(@nospecialize(err)) = ccall(:jl_test_failure_breakpoint, Cvoid, (Any,), err)
-end
+end # if
 
 if VERSION >= v"1.9.0-DEV.623"
     using .Test: FailFastError
 else
     struct FailFastError <: Exception end
-end
+end # if
 
 # compat Test.Fail
 #
@@ -90,7 +90,7 @@ else
     function Fail(test_type::Symbol, orig_expr, data, value, _context, source::LineNumberNode, _message_only::Bool, _backtrace=nothing)
         Fail(test_type, orig_expr, data, value, source)
     end
-end
+end # if
 
 if VERSION >= v"1.10.0-DEV.1171" # julia commit 5304baa45a
 using .Test: scrub_backtrace
@@ -117,7 +117,7 @@ struct TestCounts
     cumulative_errors::Int
     cumulative_broken::Int
     duration::String
-end # if
+end # struct
 format_duration(::AbstractTestSet) = "?s"
 get_test_counts(ts::AbstractTestSet) = TestCounts(false, 0,0,0,0,0,0,0,0, format_duration(ts))
 function get_test_counts(ts::DefaultTestSet)
@@ -146,7 +146,6 @@ function get_test_counts(ts::DefaultTestSet)
     # Memoize for printing convenience
     return tc
 end # function get_test_counts
-    # if
 end # if VERSION >= v"1.11.0-DEV.1529"
 
 # anynonpass
@@ -165,7 +164,7 @@ if VERSION >= v"1.12.0-DEV.1662" # julia commit 034e6093c5
     using .Test: insert_toplevel_latestworld
 else
     insert_toplevel_latestworld(@nospecialize(tests)) = tests
-end
+end # if
 
 if VERSION >= v"1.12.0-DEV.1812" # julia commit 6136893eee
     using .Test: get_rng, set_rng!
@@ -173,7 +172,7 @@ else
     using .Test: AbstractTestSet
     get_rng(ts::T) where {T <: AbstractTestSet} = hasfield(T, :rng) ? ts.rng : nothing
     set_rng!(ts::T, rng::Test.AbstractRNG) where {T <: AbstractTestSet} = hasfield(T, :rng) ? (ts.rng = rng) : rng
-end
+end # if
 
 if VERSION >= v"1.13.0-DEV.731"
     using .Test: is_failfast_error
@@ -181,7 +180,7 @@ else
     is_failfast_error(_err::FailFastError) = true
     is_failfast_error(err::LoadError) = is_failfast_error(err.error) # handle `include` barrier
     is_failfast_error(_err) = false
-end
+end # if
 
 if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
     using .Test: global_fail_fast
