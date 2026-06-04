@@ -174,3 +174,23 @@ using Test
 end
 
 end # module test_testset_forloop
+
+
+module test_testset_custom
+
+using Test
+
+# from JETLS/test/HierarchicalTestSet.jl
+struct HierarchicalTestSet <: Test.AbstractTestSet
+    __hierarchical_testset_inner__::Test.DefaultTestSet
+end
+HierarchicalTestSet(desc::AbstractString; kws...) =
+    HierarchicalTestSet(Test.DefaultTestSet(desc; kws...))
+Test.record(ts::HierarchicalTestSet, t) = Test.record(ts.__hierarchical_testset_inner__, t)
+Test.finish(ts::HierarchicalTestSet) = Test.finish(ts.__hierarchical_testset_inner__)
+
+@testset HierarchicalTestSet "Surface-kind dispatch" begin
+    @test true
+end
+
+end # module test_testset_custom

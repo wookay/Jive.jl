@@ -240,17 +240,17 @@ end # module Jive.compat_ScopedValues
 
 if VERSION >= v"1.13.0-DEV.1075" # julia commit 0b39226110
     using .Test: VERBOSE_TESTSETS
-    import .Test: print_testset_verbose
+    using .Test: print_testset_verbose
 else
     using .compat_ScopedValues: CURRENT_TESTSET, LazyScopedValue, TESTSET_DEPTH
     const VERBOSE_TESTSETS = LazyScopedValue{Bool}() do # OncePerProcess{Bool}
         return compat_get_bool_env("JULIA_TEST_VERBOSE", false)
     end
+    function print_testset_verbose(action::Symbol, ts::AbstractTestSet)
+        jive_print_testset_verbose(action, ts)
+    end
 end # if
 
-function print_testset_verbose(action::Symbol, ts::AbstractTestSet)
-    jive_print_testset_verbose(action, ts)
-end
 
 # testset_context
 # @testset let
