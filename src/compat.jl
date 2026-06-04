@@ -248,7 +248,7 @@ else
     end
 end # if
 
-function print_testset_verbose(action::Symbol, ts::DefaultTestSet)
+function print_testset_verbose(action::Symbol, ts::AbstractTestSet)
     jive_print_testset_verbose(action, ts)
 end
 
@@ -268,9 +268,6 @@ end
 if VERSION >= v"1.9.0-DEV.1055" # julia commit ff1b563e3c
     compat_testset_context = Test.testset_context
     using .Test: ContextTestSet
-    function print_testset_verbose(action::Symbol, ts::ContextTestSet)
-        jive_print_testset_verbose(action, ts)
-    end
 else
     import .Test: record
 """
