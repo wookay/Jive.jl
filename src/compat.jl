@@ -215,7 +215,7 @@ if VERSION >= v"1.13.0-DEV.1044" # julia commit bb36851288
     using ..Test: CURRENT_TESTSET, TESTSET_DEPTH
     using Base.ScopedValues: LazyScopedValue, get
 
-    CURRENT_TESTSET, TESTSET_DEPTH, get # JETLS: Unused import
+    CURRENT_TESTSET, TESTSET_DEPTH, LazyScopedValue, get # JETLS: Unused import
 else
     using ..Test: AbstractTestSet, FallbackTestSet
     abstract type AbstractScopedValue{T} end
