@@ -474,7 +474,7 @@ function _testset_forloop(args, testloop, source)
 
     # Uses a similar block as for `@testset`, except that it is
     # wrapped in the outer loop provided by the user
-    tests = testloop.args[2]
+    tests = insert_toplevel_latestworld(testloop.args[2])
     blk = quote
         _check_testset($testsettype, $(QuoteNode(testsettype.args[1])))
         ts = if ($testsettype === $DefaultTestSet) && $(isa(source, LineNumberNode)) && VERSION >= v"1.12.0-DEV.1812"
