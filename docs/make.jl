@@ -23,6 +23,5 @@ makedocs(
         "`@__REPL__`" => "REPL.md",
         "Jive.delete" => "delete.md",
         "sprints" => "sprints.md",
-        "DaemonMode" => "DaemonMode.md",
     ],
 )
