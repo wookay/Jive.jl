@@ -7,9 +7,14 @@ if VERSION >= v"1.14.0-DEV.1453" # julia commit 243155034fe2301bc1bed2e05a335c96
     using Test: @test
 elseif VERSION >= v"1.11"
     using Test: test_expr!, get_test_result, record, get_testset,
-                trigger_test_failure_break, eval_test,
+                trigger_test_failure_break,
                 Returned, ExecutionResult, Pass, Fail, Broken, Threw
     import Test: @test, Error
+    if VERSION >= v"1.13"
+    using Test: eval_test_comparison, eval_test_function
+    else
+    using Test: eval_test
+    end # if
 
 # from julia/stdlib/Test/src/Test.jl
 # macro test(ex, kws...)
@@ -82,11 +87,13 @@ function do_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=
     record(get_testset(), testres)
 end # function do_test
 
+if VERSION < v"1.13"
 # function Error(test_type::Symbol, orig_expr, value, bt, source::LineNumberNode)
 function Error(test_type::Symbol, orig_expr, value, excs::Union{Base.ExceptionStack,Nothing},
                     source::LineNumberNode, context::Union{Nothing, String})
     Error(test_type::Symbol, orig_expr, value, excs, source::LineNumberNode)
 end # function Error
+end # if VERSION < v"1.13"
 
 # function do_broken_test(result::ExecutionResult, @nospecialize(orig_expr), context=nothing)
 function do_broken_test_ext(result::ExecutionResult, @nospecialize(orig_expr), context=nothing)
