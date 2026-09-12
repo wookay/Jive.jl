@@ -3,11 +3,18 @@ module test_testset_verbose
 
 using Test
 
-@testset "Verbose 1" verbose = true begin
-    @testset "Verbose 2" begin
-        @test true
-    end
+# from julia/stdlib/Test/test/runtests.jl
+@testset "Child 1" verbose = true begin
+@testset "Child 1.1 (long name)" begin
+    @test 1 == 1
 end
+end # @testset "Child 1" verbose = true
+
+@testset "Child 2" begin
+@testset "Child 2.1" begin
+    @test 1 == 1
+end
+end # @testset "Child 2"
 
 end # module test_testset_verbose
 

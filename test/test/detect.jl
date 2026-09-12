@@ -1,4 +1,4 @@
-module test_test_detect
+module test_detect
 
 using Test
 using Jive
@@ -25,4 +25,4 @@ if VERSION >= v"1.14.0-DEV.1629"
 Test.detect_closure_boxes_all_modules
 end
 
-end # module test_test_detect
+end # module test_detect

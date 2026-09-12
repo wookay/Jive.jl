@@ -1,4 +1,4 @@
-module test_test_broken
+module test_broken
 
 using Test
 
@@ -10,4 +10,4 @@ if VERSION >= v"1.7.0-DEV.865"  # Julia PR #39322
 @test 1 == 2 skip=true
 end
 
-end # module test_test_broken
+end # module test_broken
