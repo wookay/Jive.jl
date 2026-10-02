@@ -20,7 +20,11 @@ macro skip(expr::Expr)
     if is_enabled_jive_skip_macro()
         typ = expr.head
         if typ in (:module, :struct)
-            name = expr.args[2]
+            if typ === :module && isa(first(expr.args), VersionNumber)
+                name = expr.args[3]
+            else
+                name = expr.args[2]
+            end
             push!(Skipped.expressions, typ=>name)
         elseif typ in (:function, :macro)
             fexpr = expr.args[1]
