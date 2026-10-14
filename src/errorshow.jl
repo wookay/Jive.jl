@@ -31,6 +31,7 @@ end # if VERSION >= v"1.11"
 
 
 if VERSION >= v"1.13.0-DEV.927" # julia commit 21d15ede0729a810458e2045f224e2e8a7db92e8
+using Base.StackTraces: StackFrame
 # from julia/base/errorshow.jl
 # function show_processed_backtrace(io::IO, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
 function Base.show_processed_backtrace(io::IOContext, trace::Vector, num_frames::Int, repeated_cycles::Vector{NTuple{3, Int}}, max_nested_cycles::Int; print_linebreaks::Bool, prefix = nothing)
@@ -50,7 +51,7 @@ function Base.show_processed_backtrace(io::IOContext, trace::Vector, num_frames:
     current_cycles = NTuple{4, Int}[] # adding a value to track amount to advance frame_counter when cycle is closed
 
     for i in eachindex(trace)
-        (frame, n) = trace[i]
+        (frame, n) = trace[i]::Tuple{StackFrame,Int}
         if !showable_stackframe(frame)
             frame_counter += 1
             continue
