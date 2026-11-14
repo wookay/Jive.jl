@@ -181,13 +181,17 @@ end # function runtests
 
 function include_test_file(into::Union{Nothing, Module}, filepath::String)
     if into === nothing
-        m = Module()
-        # https://github.com/JuliaLang/julia/issues/40189#issuecomment-871250226
-        Base.eval(m, quote
-            eval(x) = Base.eval(@__MODULE__, x)
-            include(x) = Base.include(@__MODULE__, x)
-        end)
-        Base.include(m, filepath)
+        mod = Module(:anonymous, true)
+        if VERSION >= v"1.13.0-DEV.1228" # julia commit 040f6cd418
+            Core.declare_const(mod, :include, Base.IncludeInto(mod))
+            Core.declare_const(mod, :eval, Core.EvalInto(mod))
+        else
+            Base.eval(mod, quote
+                include(x) = Base.include(@__MODULE__, x)
+                eval(x) = Base.eval(@__MODULE__, x)
+            end)
+        end
+        Base.include(mod, filepath)
     else
         Base.include(into, filepath)
     end
