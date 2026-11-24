@@ -3,6 +3,7 @@ module TestExt
 # @test context Ext
 # VERSION >= v"1.11"
 
+using Test: extract_file
 if VERSION >= v"1.14.0-DEV.1453" # julia commit 243155034fe2301bc1bed2e05a335c9665926390
     using Test: @test
 elseif VERSION >= v"1.11"
@@ -119,7 +120,7 @@ end # function do_broken_test
 function Base.show(io::Base.TTY, t::Fail)
     printstyled(io, "Test Failed"; bold=true, color=Base.error_color())
     print(io, " at ")
-    printstyled(io, something(t.source.file, :none), ":", t.source.line, "\n"; bold=true, color=:default)
+    printstyled(io, something(extract_file(t.source), "none"), ":", t.source.line, "\n"; bold=true, color=:default)
     print(io, "  Expression: ", t.orig_expr)
     value, data = t.value, t.data
     if t.test_type === :test_throws_wrong

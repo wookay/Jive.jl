@@ -267,6 +267,10 @@ end # if
 #+    context::Any
 if VERSION >= v"1.9.0-DEV.1055" # julia commit ff1b563e3c
     compat_testset_context = Test.testset_context
+    if VERSION >= v"1.15.0-DEV.917" # julia commit 19da8da974
+        import .Test: testset_context
+        testset_context(args, ex, _source) = testset_context(args, ex)
+    end
     using .Test: ContextTestSet
 else
     import .Test: record

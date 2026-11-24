@@ -60,7 +60,7 @@ check_the_code_block_diff(
     "src/compat.jl",
     :(if VERSION >= v"1.9.0-DEV.1055" else function _testset_context(args, ex, _source) end end),
     "sources/stdlib/Test/src/Test.jl",
-    :(module Test function testset_context(args, ex, source) end end) ;
+    :(module Test function testset_context(args, ex) end end) ;
     skip_lines = (src = vcat(-6:-4), dest = vcat(-4))
 )
 
