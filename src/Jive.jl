@@ -10,7 +10,7 @@ include("skip.jl")
 export @onlyonce
 include("onlyonce.jl")
 
-export @If
+export @If, @if
 include("If.jl")
 
 export @useinside

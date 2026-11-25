@@ -1,19 +1,34 @@
 # module Jive
 
-macro If(condition::Bool, expr::Expr)
-    if condition
-        Base.eval(__module__, expr)
+quote
+    """
+        @if(condition, expr)
+
+    evaluate the expr by the condition.
+    """
+    macro $(Symbol("if"))(condition, expr)
+        return if_impl(__module__, condition, expr)
     end
-end
+end |> eval
 
 """
     @If(condition::Expr, expr::Expr)
 
 evaluate the expr by the condition.
 """
-macro If(condition::Expr, expr::Expr)
-    if Base.eval(__module__, condition)
-        Base.eval(__module__, expr)
+macro If(condition, expr)
+    return if_impl(__module__, condition, expr)
+end
+
+function if_impl(mod, condition::Bool, expr::Expr)
+    if condition
+        Base.eval(mod, expr)
+    end
+end
+
+function if_impl(mod, condition::Expr, expr::Expr)
+    if Base.eval(mod, condition)
+        Base.eval(mod, expr)
     end
 end
 
